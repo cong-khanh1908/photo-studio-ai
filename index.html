@@ -1,0 +1,3277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Photo Studio – Commercial Edition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-primary:#0a0c10;--bg-secondary:#111419;--bg-panel:#13161d;--bg-card:#1a1e27;--bg-hover:#1f2430;
+  --border:#252a38;--border-active:#3d4560;
+  --accent:#4f8ef7;--accent-dim:#2a4a8a;--accent-glow:rgba(79,142,247,0.15);
+  --success:#3dd68c;--warning:#f5a623;--danger:#f55f5f;
+  --text-primary:#e8ecf5;--text-secondary:#8b92a8;--text-muted:#4a5068;
+  --panel-width-left:280px;--panel-width-right:310px;--header-h:52px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:var(--bg-primary);color:var(--text-primary);font-family:'Sora',sans-serif;font-size:13px;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-active);border-radius:2px;}
+
+#header{height:var(--header-h);background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;position:relative;z-index:100;}
+.logo-badge{width:30px;height:30px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:#fff;}
+.app-title{font-size:14px;font-weight:600;letter-spacing:-0.3px;}
+.app-sub{font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace;}
+.header-spacer{flex:1;}
+.status-indicator{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);}
+.status-dot.idle{background:var(--text-muted);box-shadow:none;}
+.btn-header{padding:5px 12px;border-radius:5px;border:1px solid var(--border-active);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s;}
+.btn-header:hover{background:var(--bg-hover);color:var(--text-primary);}
+.btn-header.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-header.primary:hover{opacity:.85;}
+
+#app{display:flex;height:calc(100vh - var(--header-h));}
+.panel{background:var(--bg-panel);overflow-y:auto;overflow-x:hidden;flex-shrink:0;scrollbar-width:thin;scrollbar-color:var(--border-active) transparent;}
+#left-panel{width:var(--panel-width-left);border-right:1px solid var(--border);}
+#right-panel{width:var(--panel-width-right);border-left:1px solid var(--border);}
+#center-panel{flex:1;display:flex;flex-direction:column;background:var(--bg-primary);}
+
+.panel-section{border-bottom:1px solid var(--border);}
+.section-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+.section-header:hover{background:var(--bg-hover);}
+.section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-muted);}
+.section-arrow{font-size:10px;color:var(--text-muted);transition:transform .2s;}
+.section-arrow.collapsed{transform:rotate(-90deg);}
+.section-body.hidden{display:none;}
+.section-content{padding:10px 14px;}
+
+.ctrl-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.ctrl-label{font-size:11px;color:var(--text-secondary);}
+.ctrl-val{font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border-active);border-radius:2px;outline:none;margin:5px 0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 4px var(--accent);}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:12px;font-family:'Sora',sans-serif;outline:none;transition:border-color .2s;}
+input[type=text]:focus,input[type=password]:focus,input[type=number]:focus,select:focus{border-color:var(--accent);}
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-inner-spin-button{opacity:0.5;}
+select{cursor:pointer;}
+select option{background:var(--bg-card);}
+
+.btn{padding:7px 12px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:'Sora',sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:5px;}
+.btn:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-active);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500;}
+.btn.primary:hover{opacity:.85;}
+.btn.success{background:var(--success);border-color:var(--success);color:#fff;font-weight:500;}
+.btn.full{width:100%;justify-content:center;margin-bottom:6px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap;}
+
+#upload-zone{border:2px dashed var(--border-active);border-radius:8px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px;}
+#upload-zone:hover,#upload-zone.dragover{border-color:var(--accent);background:var(--accent-glow);}
+#upload-zone .upload-icon{font-size:22px;margin-bottom:6px;opacity:.5;}
+#upload-zone .upload-text{font-size:11px;color:var(--text-secondary);}
+#upload-zone .upload-hint{font-size:10px;color:var(--text-muted);margin-top:3px;}
+#file-input{display:none;}
+
+#photo-queue{max-height:170px;overflow-y:auto;}
+.queue-item{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:5px;cursor:pointer;transition:background .15s;position:relative;}
+.queue-item:hover{background:var(--bg-hover);}
+.queue-item.active{background:var(--accent-glow);border:1px solid var(--accent-dim);}
+.queue-thumb{width:28px;height:28px;border-radius:3px;object-fit:cover;flex-shrink:0;background:var(--bg-card);}
+.queue-info{flex:1;overflow:hidden;}
+.queue-name{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.queue-status{font-size:10px;font-family:'DM Mono',monospace;}
+.queue-status.ready{color:var(--text-muted);}
+.queue-status.processing{color:var(--warning);}
+.queue-status.done{color:var(--success);}
+.queue-status.failed{color:var(--danger);}
+.queue-remove{font-size:11px;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:3px;}
+.queue-remove:hover{background:var(--danger);color:#fff;}
+
+.size-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.size-btn{padding:6px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;}
+.size-btn:hover{border-color:var(--border-active);color:var(--text-primary);}
+.size-btn.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);}
+
+.color-grid{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.color-swatch{width:24px;height:24px;border-radius:4px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+.color-swatch:hover,.color-swatch.active{border-color:var(--accent);transform:scale(1.1);}
+.color-swatch.custom{background:linear-gradient(135deg,#f55f5f,#4f8ef7,#3dd68c);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;}
+
+.clothing-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.clothing-btn{padding:6px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:10px;cursor:pointer;text-align:center;transition:all .15s;line-height:1.3;}
+.clothing-btn:hover{border-color:var(--border-active);color:var(--text-primary);}
+.clothing-btn.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);}
+
+#center-toolbar{height:44px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;}
+.tool-btn{width:30px;height:30px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;}
+.tool-btn:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border);}
+.tool-btn.active{background:var(--accent-glow);color:var(--accent);border-color:var(--accent-dim);}
+.tool-sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
+.tab-btn{padding:5px 12px;border-radius:5px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Sora',sans-serif;transition:all .15s;}
+.tab-btn:hover{color:var(--text-primary);}
+.tab-btn.active{background:var(--bg-hover);color:var(--text-primary);}
+
+#canvas-area{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:visible;}
+#print-layout-wrap{border-radius:4px;}
+#canvas-wrap{position:relative;display:flex;align-items:center;justify-content:center;}
+#main-canvas{display:block;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+#guide-canvas{position:absolute;top:0;left:0;pointer-events:none;}
+#grid-canvas{position:absolute;top:0;left:0;pointer-events:none;}
+.crop-handle{position:absolute;width:10px;height:10px;background:#fff;border:2px solid #4f8ef7;border-radius:2px;z-index:10;}
+.crop-handle:hover{background:#4f8ef7;}
+.crop-ratio-btn{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:10px;font-family:'Sora',sans-serif;cursor:pointer;transition:all .15s;}
+.crop-ratio-btn.active,.crop-ratio-btn:hover{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);}
+#crop-frame::before,#crop-frame::after{content:'';position:absolute;inset:0;pointer-events:none;}
+
+#face-overlay{position:absolute;top:0;left:0;pointer-events:none;}
+
+.placeholder-msg{text-align:center;color:var(--text-muted);}
+.placeholder-msg .big-icon{font-size:48px;margin-bottom:12px;opacity:.3;}
+.placeholder-msg p{font-size:13px;margin-bottom:6px;}
+.placeholder-msg small{font-size:11px;}
+
+#icao-panel{height:34px;background:var(--bg-secondary);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;overflow-x:auto;flex-shrink:0;}
+.icao-badge{padding:3px 8px;border-radius:12px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap;}
+.icao-badge.pass{background:rgba(61,214,140,.15);border:1px solid rgba(61,214,140,.3);color:var(--success);}
+.icao-badge.fail{background:rgba(245,95,95,.15);border:1px solid rgba(245,95,95,.3);color:var(--danger);}
+.icao-badge.warn{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.3);color:var(--warning);}
+.icao-badge.pending{background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);color:var(--text-muted);}
+
+#batch-dashboard{padding:10px 14px;}
+.dash-stat{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);}
+.dash-stat:last-child{border:none;}
+.dash-label{font-size:11px;color:var(--text-secondary);}
+.dash-val{font-size:13px;font-family:'DM Mono',monospace;font-weight:500;}
+.dash-val.blue{color:var(--accent);}
+.dash-val.green{color:var(--success);}
+.dash-val.yellow{color:var(--warning);}
+.dash-val.red{color:var(--danger);}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin:8px 0;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;width:0%;}
+
+.enhance-group{margin-bottom:10px;}
+.enhance-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:6px;}
+
+.api-key-wrap{position:relative;}
+.api-key-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-muted);font-size:11px;}
+.ai-feature-tag{display:inline-block;padding:2px 6px;background:linear-gradient(90deg,#4f8ef7,#a855f7);border-radius:3px;font-size:9px;font-weight:600;color:#fff;letter-spacing:.5px;margin-left:6px;}
+
+.layout-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.layout-btn{padding:7px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:10px;cursor:pointer;text-align:center;line-height:1.4;transition:all .15s;}
+.layout-btn:hover{border-color:var(--border-active);color:var(--text-primary);}
+.layout-btn.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);}
+.layout-btn .layout-icon{font-size:13px;display:block;margin-bottom:2px;}
+
+/* ── MIXED PRINT LAYOUT UI ── */
+.mix-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.mix-row:last-child{border:none;}
+.mix-label{flex:1;font-size:11px;color:var(--text-secondary);}
+.mix-size-tag{padding:2px 7px;border-radius:10px;font-size:10px;font-family:'DM Mono',monospace;font-weight:500;}
+.mix-size-tag.s3x4{background:rgba(79,142,247,.18);color:var(--accent);border:1px solid rgba(79,142,247,.3);}
+.mix-size-tag.s4x6{background:rgba(61,214,140,.15);color:var(--success);border:1px solid rgba(61,214,140,.25);}
+.mix-size-tag.s35{background:rgba(245,166,35,.15);color:var(--warning);border:1px solid rgba(245,166,35,.25);}
+.mix-size-tag.s2x2{background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.25);}
+.mix-qty-wrap{display:flex;align-items:center;gap:4px;}
+.mix-qty-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;}
+.mix-qty-btn:hover{background:var(--bg-hover);border-color:var(--border-active);color:var(--text-primary);}
+.mix-qty-input{width:36px;padding:3px 5px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:11px;font-family:'DM Mono',monospace;text-align:center;outline:none;}
+.mix-qty-input:focus{border-color:var(--accent);}
+.mix-photo-select{width:100%;padding:4px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:10px;font-family:'Sora',sans-serif;outline:none;margin-top:4px;cursor:pointer;}
+.mix-photo-select:focus{border-color:var(--accent);}
+.print-info-box{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin:8px 0;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);line-height:1.8;}
+.print-info-box .pi-row{display:flex;justify-content:space-between;}
+.print-info-box .pi-label{color:var(--text-secondary);}
+.print-info-box .pi-val{color:var(--text-primary);}
+.print-info-box .pi-warn{color:var(--warning);}
+
+#zoom-val{font-size:11px;font-family:'DM Mono',monospace;color:var(--text-secondary);min-width:36px;text-align:center;}
+
+#ai-overlay{position:absolute;inset:0;background:rgba(10,12,16,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;border-radius:4px;}
+#ai-overlay .ai-spin{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:10px;}
+#ai-overlay .ai-msg{font-size:12px;color:var(--text-secondary);}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.face-box{position:absolute;border:2px solid var(--accent);border-radius:2px;pointer-events:none;box-shadow:0 0 0 1px rgba(79,142,247,.3);}
+.face-box-label{position:absolute;top:-18px;left:0;font-size:9px;font-family:'DM Mono',monospace;background:var(--accent);color:#fff;padding:1px 5px;border-radius:3px;}
+.landmark-dot{position:absolute;width:5px;height:5px;background:var(--accent);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 3px var(--accent);}
+.landmark-dot.eye{background:var(--success);box-shadow:0 0 4px var(--success);}
+.landmark-dot.nose{background:var(--warning);box-shadow:0 0 3px var(--warning);}
+
+#notif{position:fixed;top:12px;right:12px;z-index:2000;display:flex;flex-direction:column;gap:6px;pointer-events:none;}
+.notif-item{padding:10px 14px;border-radius:7px;border:1px solid var(--border-active);background:var(--bg-card);font-size:12px;max-width:280px;animation:slideIn .3s ease;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+.notif-item.success{border-color:rgba(61,214,140,.4);color:var(--success);}
+.notif-item.error{border-color:rgba(245,95,95,.4);color:var(--danger);}
+.notif-item.info{border-color:rgba(79,142,247,.3);color:var(--accent);}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+#log-panel{max-height:80px;overflow-y:auto;}
+.log-line{font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);padding:1px 0;}
+.log-line.info{color:var(--text-secondary);}
+.log-line.ok{color:var(--success);}
+.log-line.err{color:var(--danger);}
+.log-line.warn{color:var(--warning);}
+
+#custom-bg-preview{width:100%;height:50px;border-radius:4px;object-fit:cover;border:1px solid var(--border);margin-top:6px;display:none;}
+#clothing-ai-status{font-size:10px;color:var(--text-muted);margin-top:4px;font-family:'DM Mono',monospace;}
+
+/* Face confidence indicator */
+.face-conf-bar{height:3px;border-radius:2px;margin-top:4px;transition:width .4s;}
+
+/* ── PRINT DRAG LAYER ── */
+#print-layout-wrap { border-radius:4px; display:inline-block; }
+.print-cell {
+  position:absolute;
+  box-sizing:border-box;
+  cursor:grab;
+  border:1.5px dashed transparent;
+  transition:border-color .15s, box-shadow .15s;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.print-cell:hover {
+  border-color:rgba(79,142,247,0.7);
+  box-shadow:0 0 0 2px rgba(79,142,247,0.18);
+  z-index:10;
+}
+.print-cell.selected {
+  border-color:var(--accent) !important;
+  box-shadow:0 0 0 2px rgba(79,142,247,0.35) !important;
+  z-index:20;
+}
+.print-cell.dragging {
+  cursor:grabbing;
+  opacity:0.82;
+  z-index:100;
+  box-shadow:0 8px 28px rgba(0,0,0,.45);
+  border-color:var(--accent) !important;
+}
+.print-cell.drop-target {
+  border-color:var(--success) !important;
+  box-shadow:0 0 0 3px rgba(61,214,140,0.3) !important;
+  background:rgba(61,214,140,0.06);
+}
+.print-cell-handle {
+  position:absolute;
+  top:2px; left:2px;
+  width:16px; height:16px;
+  background:rgba(79,142,247,0.8);
+  border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:8px; color:#fff;
+  opacity:0;
+  transition:opacity .2s;
+  pointer-events:none;
+  z-index:5;
+}
+.print-cell:hover .print-cell-handle { opacity:1; }
+.print-cell-label {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  height:13px;
+  background:rgba(0,0,0,0.55);
+  color:#fff;
+  font-size:8px;
+  font-family:'DM Mono',monospace;
+  text-align:center;
+  line-height:13px;
+  pointer-events:none;
+}
+/* Toolbar hint when in print tab */
+#print-drag-hint {
+  position:absolute;
+  top:6px; left:50%; transform:translateX(-50%);
+  background:rgba(79,142,247,0.18);
+  border:1px solid rgba(79,142,247,0.35);
+  border-radius:20px;
+  padding:3px 12px;
+  font-size:10px;
+  color:var(--accent);
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:1;
+  transition:opacity 1s;
+  z-index:200;
+}
+
+/* Clothing color swatches */
+.clothing-color-swatch{width:24px;height:24px;border-radius:4px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+.clothing-color-swatch:hover,.clothing-color-swatch.active{border-color:var(--accent);transform:scale(1.15);}
+.clothing-color-swatch.custom{background:linear-gradient(135deg,#1a2240,#B71C1C,#1B5E20);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;}
+</style>
+</head>
+<body>
+
+<div id="notif"></div>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo-badge">CK</div>
+  <div>
+    <div class="app-title">AI Photo Studio</div>
+    <div class="app-sub">Commercial Edition v3.1 · Photo Print · NguyenCongKhanh©</div>
+  </div>
+  <div class="header-spacer"></div>
+  <div class="status-indicator">
+    <div class="status-dot idle" id="proc-dot"></div>
+    <span id="proc-label">Idle</span>
+  </div>
+  <button class="btn-header" onclick="clearAll()">Clear All</button>
+  <button class="btn-header primary" onclick="processCurrentPhoto()">▶ Process Photo</button>
+</div>
+
+<div id="app">
+
+<!-- ═══════════════════ LEFT PANEL ═══════════════════ -->
+<div class="panel" id="left-panel">
+
+  <!-- UPLOAD -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-upload')">
+      <span class="section-title">📁 Image Input</span>
+      <span class="section-arrow" id="arr-sec-upload">▾</span>
+    </div>
+    <div class="section-body" id="sec-upload">
+      <div class="section-content">
+        <div id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">Drop photos here or click to upload</div>
+          <div class="upload-hint">JPG · PNG · WEBP · BMP · up to 1000</div>
+        </div>
+        <input type="file" id="file-input" accept="image/*" multiple onchange="handleFiles(this.files)">
+        <button class="btn full primary" onclick="document.getElementById('file-input').click()">+ Add Photos</button>
+        <div id="queue-count" style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">Queue: 0 photos</div>
+        <div id="photo-queue"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHOTO SIZE -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-size')">
+      <span class="section-title">📐 Photo Size</span>
+      <span class="section-arrow" id="arr-sec-size">▾</span>
+    </div>
+    <div class="section-body" id="sec-size">
+      <div class="section-content">
+        <div class="size-grid">
+          <div class="size-btn active" onclick="setSize(this,35,45)" data-w="35" data-h="45">35×45 mm<br><small style="font-size:9px;opacity:.6">International</small></div>
+          <div class="size-btn" onclick="setSize(this,30,40)" data-w="30" data-h="40">3×4 cm<br><small style="font-size:9px;opacity:.6">Standard</small></div>
+          <div class="size-btn" onclick="setSize(this,40,60)" data-w="40" data-h="60">4×6 cm<br><small style="font-size:9px;opacity:.6">Large</small></div>
+          <div class="size-btn" onclick="setSize(this,51,51)" data-w="51" data-h="51">2×2 in<br><small style="font-size:9px;opacity:.6">US Visa</small></div>
+        </div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div><label class="ctrl-label">W (mm)</label><input type="number" id="custom-w" value="35" min="10" max="200" onchange="applyCustomSize()"></div>
+          <div><label class="ctrl-label">H (mm)</label><input type="number" id="custom-h" value="45" min="10" max="200" onchange="applyCustomSize()"></div>
+        </div>
+        <div style="margin-top:6px;">
+          <label class="ctrl-label">DPI</label>
+          <select id="dpi-select">
+            <option value="300" selected>300 DPI (Print)</option>
+            <option value="600">600 DPI (High Res)</option>
+            <option value="150">150 DPI (Screen)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKGROUND -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-bg')">
+      <span class="section-title">🎨 Background</span>
+      <span class="section-arrow" id="arr-sec-bg">▾</span>
+    </div>
+    <div class="section-body" id="sec-bg">
+      <div class="section-content">
+        <div class="color-grid">
+          <div class="color-swatch active" style="background:#FFFFFF;" onclick="setBg(this,'#FFFFFF')" title="White"></div>
+          <div class="color-swatch" style="background:#E8F0F7;" onclick="setBg(this,'#E8F0F7')" title="Light Blue"></div>
+          <div class="color-swatch" style="background:#F0F0F0;" onclick="setBg(this,'#F0F0F0')" title="Light Gray"></div>
+          <div class="color-swatch" style="background:#F5E6E6;" onclick="setBg(this,'#F5E6E6')" title="Soft Pink"></div>
+          <div class="color-swatch" style="background:#C8102E;" onclick="setBg(this,'#C8102E')" title="Red"></div>
+          <div class="color-swatch" style="background:#003580;" onclick="setBg(this,'#003580')" title="Blue Formal"></div>
+          <div class="color-swatch custom" onclick="openCustomBg()">+</div>
+        </div>
+        <input type="color" id="bg-color-picker" style="display:none" onchange="setBgFromPicker(this.value)">
+        <div style="margin-top:8px;">
+          <button class="btn full" onclick="document.getElementById('bg-image-input').click()">📂 Upload Custom BG</button>
+          <input type="file" id="bg-image-input" accept="image/*" style="display:none" onchange="loadCustomBgImage(this)">
+          <img id="custom-bg-preview" alt="Custom BG">
+        </div>
+        <div style="margin-top:8px;">
+          <div class="ctrl-row"><span class="ctrl-label">Edge Feather</span></div>
+          <input type="range" id="bg-feather" min="0" max="20" value="5" oninput="updatePreview()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLOTHING -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-clothing')">
+      <span class="section-title">👔 Trang Phục <span class="ai-feature-tag">AI</span></span>
+      <span class="section-arrow" id="arr-sec-clothing">▾</span>
+    </div>
+    <div class="section-body" id="sec-clothing">
+      <div class="section-content">
+        <!-- Template selector -->
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:5px;">Mẫu Trang Phục</div>
+        <div class="clothing-grid">
+          <div class="clothing-btn active" onclick="setClothing(this,'none')">Không đổi</div>
+          <div class="clothing-btn" onclick="setClothing(this,'formal_shirt')">👔 Sơ Mi</div>
+          <div class="clothing-btn" onclick="setClothing(this,'business_suit')">🤵 Vest Đen</div>
+          <div class="clothing-btn" onclick="setClothing(this,'blazer')">🧥 Blazer</div>
+          <div class="clothing-btn" onclick="setClothing(this,'uniform')">🎖 Đồng Phục</div>
+          <div class="clothing-btn" onclick="setClothing(this,'graduation')">🎓 Tốt Nghiệp</div>
+        </div>
+
+        <!-- Shirt / clothing color -->
+        <div style="margin-top:10px;">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:5px;">Màu Trang Phục</div>
+          <div class="color-grid" id="clothing-color-grid">
+            <div class="clothing-color-swatch active" style="background:#F5F5F5;border:2px solid #ddd;" onclick="setClothingColor(this,'#F5F5F5')" title="Trắng"></div>
+            <div class="clothing-color-swatch" style="background:#1a2240;" onclick="setClothingColor(this,'#1a2240')" title="Xanh Navy"></div>
+            <div class="clothing-color-swatch" style="background:#1E3A5F;" onclick="setClothingColor(this,'#1E3A5F')" title="Xanh Đậm"></div>
+            <div class="clothing-color-swatch" style="background:#2C3E50;" onclick="setClothingColor(this,'#2C3E50')" title="Xám Đậm"></div>
+            <div class="clothing-color-swatch" style="background:#6B4C3B;" onclick="setClothingColor(this,'#6B4C3B')" title="Nâu"></div>
+            <div class="clothing-color-swatch" style="background:#1B5E20;" onclick="setClothingColor(this,'#1B5E20')" title="Xanh Lá"></div>
+            <div class="clothing-color-swatch" style="background:#B71C1C;" onclick="setClothingColor(this,'#B71C1C')" title="Đỏ"></div>
+            <div class="clothing-color-swatch custom" onclick="openClothingColorPicker()" title="Tùy chỉnh">+</div>
+          </div>
+          <input type="color" id="clothing-color-picker" style="display:none" value="#1a2240" onchange="setClothingColorFromPicker(this.value)">
+        </div>
+
+        <div id="clothing-ai-status" style="margin-top:6px;">Yêu cầu Gemini API key</div>
+        <button class="btn full primary" style="margin-top:8px;" onclick="applyAIClothing()">Áp Dụng Trang Phục</button>
+        <button class="btn full" style="margin-top:4px;" onclick="applyClothingColorOnly()">🎨 Chỉ Đổi Màu Áo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENHANCEMENT -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-enhance')">
+      <span class="section-title">✨ Enhancement</span>
+      <span class="section-arrow" id="arr-sec-enhance">▾</span>
+    </div>
+    <div class="section-body" id="sec-enhance">
+      <div class="section-content">
+        <div class="enhance-group">
+          <div class="enhance-title">Skin & Face</div>
+          <div class="ctrl-row"><span class="ctrl-label">Skin Smooth</span><span class="ctrl-val" id="val-smooth">50</span></div>
+          <input type="range" id="sl-smooth" min="0" max="100" value="50" oninput="updateSlider('smooth',this.value);updatePreview()">
+          <div class="ctrl-row"><span class="ctrl-label">Blemish Remove</span><span class="ctrl-val" id="val-blemish">30</span></div>
+          <input type="range" id="sl-blemish" min="0" max="100" value="30" oninput="updateSlider('blemish',this.value);updatePreview()">
+        </div>
+        <div class="enhance-group">
+          <div class="enhance-title">Color & Light</div>
+          <div class="ctrl-row"><span class="ctrl-label">Brightness</span><span class="ctrl-val" id="val-brightness">0</span></div>
+          <input type="range" id="sl-brightness" min="-50" max="50" value="0" oninput="updateSlider('brightness',this.value);updatePreview()">
+          <div class="ctrl-row"><span class="ctrl-label">Contrast</span><span class="ctrl-val" id="val-contrast">0</span></div>
+          <input type="range" id="sl-contrast" min="-50" max="50" value="0" oninput="updateSlider('contrast',this.value);updatePreview()">
+          <div class="ctrl-row"><span class="ctrl-label">Saturation</span><span class="ctrl-val" id="val-saturation">0</span></div>
+          <input type="range" id="sl-saturation" min="-50" max="50" value="0" oninput="updateSlider('saturation',this.value);updatePreview()">
+          <div class="ctrl-row"><span class="ctrl-label">Sharpness</span><span class="ctrl-val" id="val-sharpness">30</span></div>
+          <input type="range" id="sl-sharpness" min="0" max="100" value="30" oninput="updateSlider('sharpness',this.value);updatePreview()">
+        </div>
+        <div class="enhance-group">
+          <div class="enhance-title">Eyes</div>
+          <div class="ctrl-row"><span class="ctrl-label">Eye Brighten</span><span class="ctrl-val" id="val-eye">20</span></div>
+          <input type="range" id="sl-eye" min="0" max="100" value="20" oninput="updateSlider('eye',this.value);updatePreview()">
+        </div>
+        <button class="btn full" onclick="resetEnhancements()">↺ Reset</button>
+        <button class="btn full primary" onclick="applyAIEnhancement()">✨ AI Enhance <span class="ai-feature-tag">AI</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GEMINI API -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-api')">
+      <span class="section-title">🔑 Gemini API</span>
+      <span class="section-arrow" id="arr-sec-api">▾</span>
+    </div>
+    <div class="section-body" id="sec-api">
+      <div class="section-content">
+        <div class="api-key-wrap">
+          <input type="password" id="api-key" placeholder="Enter Gemini API key..." oninput="onApiKeyChange()">
+          <span class="api-key-toggle" onclick="toggleApiKeyVis()">👁</span>
+        </div>
+        <div id="api-status" style="margin-top:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);">● No key – AI features disabled</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end left panel -->
+
+<!-- ═══════════════════ CENTER PANEL ═══════════════════ -->
+<div id="center-panel">
+  <div id="center-toolbar">
+    <button class="tool-btn active" id="btn-mode-edit" onclick="setMode('edit')">✏️</button>
+    <button class="tool-btn" onclick="rotateImage(-90)">↺</button>
+    <button class="tool-btn" onclick="rotateImage(90)">↻</button>
+    <button class="tool-btn" onclick="flipImage()">⬌</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn active" id="btn-guides" onclick="toggleGuides()">📏</button>
+    <button class="tool-btn" id="btn-grid" onclick="toggleGrid()" title="Bật/tắt lưới">⊞</button>
+    <button class="tool-btn" id="btn-landmarks" onclick="toggleLandmarks()">👤</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-crop" onclick="toggleCropMode()" title="Crop ảnh">✂️</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" onclick="zoomIn()">🔍</button>
+    <span id="zoom-val">100%</span>
+    <button class="tool-btn" onclick="zoomOut()">🔎</button>
+    <button class="tool-btn" onclick="resetZoom()">⊡</button>
+    <div class="tool-sep"></div>
+    <button class="tab-btn active" id="tab-photo" onclick="switchTab('photo')">Photo</button>
+    <button class="tab-btn" id="tab-print" onclick="switchTab('print')">Print Layout</button>
+  </div>
+
+  <div id="canvas-area">
+    <div class="placeholder-msg" id="placeholder">
+      <div class="big-icon">🪪</div>
+      <p>No photo loaded</p>
+      <small>Upload a photo from the left panel to begin</small>
+    </div>
+    <div id="canvas-wrap" style="display:none;position:relative;">
+      <canvas id="main-canvas"></canvas>
+      <canvas id="guide-canvas"></canvas>
+      <canvas id="grid-canvas" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+      <div id="face-overlay"></div>
+      <!-- Crop overlay -->
+      <div id="crop-overlay" style="display:none;position:absolute;inset:0;z-index:50;">
+        <!-- Dark mask (4 sides) -->
+        <div id="crop-mask-t" style="position:absolute;background:rgba(0,0,0,0.55);left:0;right:0;top:0;"></div>
+        <div id="crop-mask-b" style="position:absolute;background:rgba(0,0,0,0.55);left:0;right:0;bottom:0;"></div>
+        <div id="crop-mask-l" style="position:absolute;background:rgba(0,0,0,0.55);top:0;bottom:0;left:0;"></div>
+        <div id="crop-mask-r" style="position:absolute;background:rgba(0,0,0,0.55);top:0;bottom:0;right:0;"></div>
+        <!-- Crop frame -->
+        <div id="crop-frame" style="position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,0.55);cursor:move;box-sizing:border-box;">
+          <!-- Rule-of-thirds grid inside frame -->
+          <div id="crop-grid-inner" style="position:absolute;inset:0;pointer-events:none;"></div>
+          <!-- 8 resize handles -->
+          <div class="crop-handle" data-dir="nw" style="top:-5px;left:-5px;cursor:nw-resize;"></div>
+          <div class="crop-handle" data-dir="n"  style="top:-5px;left:50%;transform:translateX(-50%);cursor:n-resize;"></div>
+          <div class="crop-handle" data-dir="ne" style="top:-5px;right:-5px;cursor:ne-resize;"></div>
+          <div class="crop-handle" data-dir="e"  style="top:50%;right:-5px;transform:translateY(-50%);cursor:e-resize;"></div>
+          <div class="crop-handle" data-dir="se" style="bottom:-5px;right:-5px;cursor:se-resize;"></div>
+          <div class="crop-handle" data-dir="s"  style="bottom:-5px;left:50%;transform:translateX(-50%);cursor:s-resize;"></div>
+          <div class="crop-handle" data-dir="sw" style="bottom:-5px;left:-5px;cursor:sw-resize;"></div>
+          <div class="crop-handle" data-dir="w"  style="bottom:50%;left:-5px;transform:translateY(50%);cursor:w-resize;"></div>
+        </div>
+        <!-- Crop toolbar -->
+        <div id="crop-toolbar" style="position:absolute;bottom:-46px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:rgba(24,24,32,0.96);border:1px solid rgba(79,142,247,0.3);border-radius:8px;padding:7px 12px;white-space:nowrap;z-index:60;">
+          <span style="font-size:10px;color:var(--text-muted);margin-right:4px;">Tỷ lệ:</span>
+          <button class="crop-ratio-btn active" data-ratio="free" onclick="setCropRatio('free')">Tự do</button>
+          <button class="crop-ratio-btn" data-ratio="3:4" onclick="setCropRatio('3:4')">3×4</button>
+          <button class="crop-ratio-btn" data-ratio="4:6" onclick="setCropRatio('4:6')">4×6</button>
+          <button class="crop-ratio-btn" data-ratio="1:1" onclick="setCropRatio('1:1')">1:1</button>
+          <button class="crop-ratio-btn" data-ratio="35:45" onclick="setCropRatio('35:45')">35×45</button>
+          <input id="crop-custom-ratio" type="text" placeholder="W:H" style="width:54px;padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:10px;" onchange="setCropRatio(this.value)">
+          <div style="width:1px;height:18px;background:var(--border);margin:0 4px;"></div>
+          <button onclick="applyCrop()" style="padding:4px 12px;background:var(--accent);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Sora',sans-serif;">✓ Crop</button>
+          <button onclick="cancelCrop()" style="padding:4px 10px;background:var(--bg-card);color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;font-family:'Sora',sans-serif;">✕</button>
+        </div>
+      </div>
+      <div id="ai-overlay" style="display:none;">
+        <div class="ai-spin"></div>
+        <div class="ai-msg" id="ai-overlay-msg">Processing...</div>
+      </div>
+    </div>
+    <!-- Print layout: canvas background + draggable overlay -->
+    <div id="print-layout-wrap" style="display:none;position:relative;box-shadow:0 8px 40px rgba(0,0,0,.6);">
+      <canvas id="print-canvas"></canvas>
+      <div id="print-drag-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></div>
+    </div>
+  </div>
+
+  <div id="icao-panel">
+    <span style="font-size:10px;color:var(--text-muted);margin-right:4px;flex-shrink:0;">ICAO:</span>
+    <span class="icao-badge pending" id="icao-head-size">Head Size</span>
+    <span class="icao-badge pending" id="icao-eye-pos">Eye Pos</span>
+    <span class="icao-badge pending" id="icao-center">Centering</span>
+    <span class="icao-badge pending" id="icao-tilt">Tilt</span>
+    <span class="icao-badge pending" id="icao-bg">Background</span>
+    <span class="icao-badge pending" id="icao-bright">Brightness</span>
+    <span id="face-conf-label" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);margin-left:6px;flex-shrink:0;"></span>
+  </div>
+</div>
+
+<!-- ═══════════════════ RIGHT PANEL ═══════════════════ -->
+<div class="panel" id="right-panel">
+
+  <!-- BATCH -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-batch')">
+      <span class="section-title">⚡ Batch Dashboard</span>
+      <span class="section-arrow" id="arr-sec-batch">▾</span>
+    </div>
+    <div class="section-body" id="sec-batch">
+      <div id="batch-dashboard">
+        <div class="dash-stat"><span class="dash-label">Total Queued</span><span class="dash-val blue" id="stat-total">0</span></div>
+        <div class="dash-stat"><span class="dash-label">Processing</span><span class="dash-val yellow" id="stat-proc">0</span></div>
+        <div class="dash-stat"><span class="dash-label">Completed</span><span class="dash-val green" id="stat-done">0</span></div>
+        <div class="dash-stat"><span class="dash-label">Failed</span><span class="dash-val red" id="stat-fail">0</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="batch-progress"></div></div>
+        <div id="batch-eta" style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;"></div>
+      </div>
+      <div style="padding:0 14px 10px;">
+        <button class="btn full primary" onclick="startBatchProcess()">▶ Process All</button>
+        <button class="btn full" onclick="stopBatch()">⏹ Stop</button>
+      </div>
+      <div style="padding:0 14px 10px;">
+        <div id="log-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MIXED PRINT LAYOUT ── -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-print')">
+      <span class="section-title">🖨 Print Layout</span>
+      <span class="section-arrow" id="arr-sec-print">▾</span>
+    </div>
+    <div class="section-body" id="sec-print">
+      <div class="section-content">
+
+        <!-- Paper size -->
+        <label class="ctrl-label" style="margin-bottom:6px;display:block;">Khổ Giấy In</label>
+
+        <!-- Group tabs -->
+        <div style="display:flex;gap:4px;margin-bottom:8px;">
+          <button class="tab-btn active" id="paper-tab-photo" onclick="switchPaperTab('photo')" style="padding:4px 10px;font-size:10px;border:1px solid var(--border);border-radius:4px;">📷 Ảnh Chuyên Dụng</button>
+          <button class="tab-btn" id="paper-tab-standard" onclick="switchPaperTab('standard')" style="padding:4px 10px;font-size:10px;border:1px solid var(--border);border-radius:4px;">📄 Tiêu Chuẩn</button>
+        </div>
+
+        <!-- Photo paper sizes -->
+        <div id="paper-group-photo" style="margin-bottom:10px;">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;">Khổ Giấy Ảnh Phòng In</div>
+          <div class="layout-grid">
+            <div class="layout-btn active" id="pbtn-4R" onclick="setPaper(this,'4R')"><span class="layout-icon">🗂</span>4R<br><small style="opacity:.6">102×152mm</small></div>
+            <div class="layout-btn" id="pbtn-5R" onclick="setPaper(this,'5R')"><span class="layout-icon">🗃</span>5R<br><small style="opacity:.6">127×178mm</small></div>
+            <div class="layout-btn" id="pbtn-6R" onclick="setPaper(this,'6R')"><span class="layout-icon">🖼</span>6R<br><small style="opacity:.6">152×203mm</small></div>
+            <div class="layout-btn" id="pbtn-8R" onclick="setPaper(this,'8R')"><span class="layout-icon">🖼</span>8R<br><small style="opacity:.6">203×254mm</small></div>
+            <div class="layout-btn" id="pbtn-10x15" onclick="setPaper(this,'10x15')"><span class="layout-icon">📸</span>10×15<br><small style="opacity:.6">100×150mm</small></div>
+            <div class="layout-btn" id="pbtn-9x13" onclick="setPaper(this,'9x13')"><span class="layout-icon">📸</span>9×13<br><small style="opacity:.6">90×130mm</small></div>
+            <div class="layout-btn" id="pbtn-13x18" onclick="setPaper(this,'13x18')"><span class="layout-icon">📸</span>13×18<br><small style="opacity:.6">130×180mm</small></div>
+            <div class="layout-btn" id="pbtn-15x21" onclick="setPaper(this,'15x21')"><span class="layout-icon">📸</span>15×21<br><small style="opacity:.6">150×210mm</small></div>
+          </div>
+        </div>
+
+        <!-- Standard paper sizes (hidden by default) -->
+        <div id="paper-group-standard" style="display:none;margin-bottom:10px;">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;">Khổ Giấy Tiêu Chuẩn</div>
+          <div class="layout-grid">
+            <div class="layout-btn" id="pbtn-A4" onclick="setPaper(this,'A4')"><span class="layout-icon">📄</span>A4<br><small style="opacity:.6">210×297mm</small></div>
+            <div class="layout-btn" id="pbtn-A5" onclick="setPaper(this,'A5')"><span class="layout-icon">📃</span>A5<br><small style="opacity:.6">148×210mm</small></div>
+            <div class="layout-btn" id="pbtn-Letter" onclick="setPaper(this,'Letter')"><span class="layout-icon">📄</span>Letter<br><small style="opacity:.6">216×279mm</small></div>
+            <div class="layout-btn" id="pbtn-20x30" onclick="setPaper(this,'20x30')"><span class="layout-icon">🗃</span>20×30<br><small style="opacity:.6">200×300mm</small></div>
+          </div>
+        </div>
+
+        <!-- Current paper info -->
+        <div id="paper-info-tag" style="background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:5px 9px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-secondary);margin-bottom:8px;">
+          Đã chọn: <span id="paper-info-name" style="color:var(--accent);">4R (4×6")</span> · <span id="paper-info-dim">102×152mm</span>
+        </div>
+
+        <!-- Orientation selector -->
+        <label class="ctrl-label" style="margin-bottom:5px;display:block;">Chiều Giấy</label>
+        <div style="display:flex;gap:6px;margin-bottom:10px;" id="orientation-btns">
+          <button id="orient-portrait" onclick="setOrientation('portrait')"
+            style="flex:1;padding:7px 6px;border-radius:5px;border:1px solid var(--accent);background:var(--accent-glow);color:var(--accent);font-size:11px;font-family:'Sora',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;">
+            <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor"><rect x="1" y="1" width="10" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            Đứng
+          </button>
+          <button id="orient-landscape" onclick="setOrientation('landscape')"
+            style="flex:1;padding:7px 6px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:11px;font-family:'Sora',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;">
+            <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><rect x="1" y="1" width="14" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            Ngang
+          </button>
+          <button id="orient-auto" onclick="setOrientation('auto')"
+            style="flex:1;padding:7px 6px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:11px;font-family:'Sora',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;">
+            ✦ Tự Động
+          </button>
+        </div>
+
+        <!-- Margin & gap -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+          <div><label class="ctrl-label">Margin (mm)</label><input type="number" id="print-margin" value="4" min="1" max="15" onchange="updatePrintPreviewInfo()"></div>
+          <div><label class="ctrl-label">Gap (mm)</label><input type="number" id="print-gap" value="3" min="1" max="10" onchange="updatePrintPreviewInfo()"></div>
+        </div>
+
+        <!-- Photo size rows with quantity + photo selector -->
+        <label class="ctrl-label" style="margin-bottom:6px;display:block;">Photo Sizes &amp; Quantities</label>
+
+        <div id="mix-rows">
+          <!-- 3x4 cm row -->
+          <div class="mix-row" id="mix-row-3x4">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <span class="mix-size-tag s3x4">3×4 cm</span>
+                <span class="mix-label">30×40 mm</span>
+                <div class="mix-qty-wrap">
+                  <button class="mix-qty-btn" onclick="changeQty('3x4',-1)">−</button>
+                  <input class="mix-qty-input" id="qty-3x4" type="number" value="4" min="0" max="100" onchange="updatePrintPreviewInfo()">
+                  <button class="mix-qty-btn" onclick="changeQty('3x4',1)">+</button>
+                </div>
+              </div>
+              <select class="mix-photo-select" id="photo-sel-3x4" onchange="updatePrintPreviewInfo()">
+                <option value="current">Use current photo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 4x6 cm row -->
+          <div class="mix-row" id="mix-row-4x6">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <span class="mix-size-tag s4x6">4×6 cm</span>
+                <span class="mix-label">40×60 mm</span>
+                <div class="mix-qty-wrap">
+                  <button class="mix-qty-btn" onclick="changeQty('4x6',-1)">−</button>
+                  <input class="mix-qty-input" id="qty-4x6" type="number" value="0" min="0" max="100" onchange="updatePrintPreviewInfo()">
+                  <button class="mix-qty-btn" onclick="changeQty('4x6',1)">+</button>
+                </div>
+              </div>
+              <select class="mix-photo-select" id="photo-sel-4x6" onchange="updatePrintPreviewInfo()">
+                <option value="current">Use current photo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 35x45 row -->
+          <div class="mix-row" id="mix-row-35x45">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <span class="mix-size-tag s35">35×45</span>
+                <span class="mix-label">35×45 mm</span>
+                <div class="mix-qty-wrap">
+                  <button class="mix-qty-btn" onclick="changeQty('35x45',-1)">−</button>
+                  <input class="mix-qty-input" id="qty-35x45" type="number" value="0" min="0" max="100" onchange="updatePrintPreviewInfo()">
+                  <button class="mix-qty-btn" onclick="changeQty('35x45',1)">+</button>
+                </div>
+              </div>
+              <select class="mix-photo-select" id="photo-sel-35x45" onchange="updatePrintPreviewInfo()">
+                <option value="current">Use current photo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 2x2 in row -->
+          <div class="mix-row" id="mix-row-2x2">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <span class="mix-size-tag s2x2">2×2 in</span>
+                <span class="mix-label">51×51 mm</span>
+                <div class="mix-qty-wrap">
+                  <button class="mix-qty-btn" onclick="changeQty('2x2',-1)">−</button>
+                  <input class="mix-qty-input" id="qty-2x2" type="number" value="0" min="0" max="100" onchange="updatePrintPreviewInfo()">
+                  <button class="mix-qty-btn" onclick="changeQty('2x2',1)">+</button>
+                </div>
+              </div>
+              <select class="mix-photo-select" id="photo-sel-2x2" onchange="updatePrintPreviewInfo()">
+                <option value="current">Use current photo</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layout info box -->
+        <div class="print-info-box" id="print-info-box">
+          <div class="pi-row"><span class="pi-label">Total photos:</span><span class="pi-val" id="pi-total">4</span></div>
+          <div class="pi-row"><span class="pi-label">Fits on sheet:</span><span class="pi-val" id="pi-fits">—</span></div>
+          <div class="pi-row"><span class="pi-label">Space used:</span><span class="pi-val" id="pi-space">—</span></div>
+          <div id="pi-warn-row" style="display:none" class="pi-row"><span class="pi-warn" id="pi-warn-msg">⚠ —</span></div>
+        </div>
+
+        <div style="display:flex;gap:6px;">
+          <button class="btn full primary" style="flex:1;" onclick="switchTab('print');generateMixedPrintLayout()">👁 Xem Bố Cục</button>
+          <button class="btn" onclick="generateMixedPrintLayout()" title="Đặt lại bố cục tự động">↺</button>
+        </div>
+        <canvas id="print-preview-mini" style="width:100%;border-radius:4px;border:1px solid var(--border);display:block;margin-top:8px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-export')">
+      <span class="section-title">📤 Export</span>
+      <span class="section-arrow" id="arr-sec-export">▾</span>
+    </div>
+    <div class="section-body" id="sec-export">
+      <div class="section-content">
+        <label class="ctrl-label">Format</label>
+        <select id="export-format" style="margin-bottom:8px;">
+          <option value="image/png">PNG (Lossless)</option>
+          <option value="image/jpeg" selected>JPEG (Print Lab)</option>
+          <option value="pdf">PDF Print Sheet</option>
+        </select>
+        <label class="ctrl-label">Quality</label>
+        <input type="range" id="export-quality" min="70" max="100" value="95" oninput="document.getElementById('export-q-val').textContent=this.value+'%'">
+        <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;margin-bottom:8px;"><span id="export-q-val">95%</span></div>
+        <button class="btn full primary" onclick="exportSingle()">⬇ Download Current</button>
+        <button class="btn full" onclick="exportBatchZip()">📦 Download ZIP (All)</button>
+        <button class="btn full" onclick="exportMixedPrintPDF()">📄 Export Mixed PDF Sheet</button>
+        <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">300 DPI · sRGB · Print Lab Ready<br>Compatible: Noritsu · Fuji Frontier</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ICAO DETAILS -->
+  <div class="panel-section">
+    <div class="section-header" onclick="toggleSection('sec-icao')">
+      <span class="section-title">✅ ICAO Validation</span>
+      <span class="section-arrow" id="arr-sec-icao">▾</span>
+    </div>
+    <div class="section-body" id="sec-icao">
+      <div class="section-content">
+        <div id="icao-details" style="font-size:11px;color:var(--text-secondary);line-height:1.8;">No photo analyzed yet.</div>
+        <button class="btn full" style="margin-top:8px;" onclick="autoCorrectICAO()">🔧 Auto-Correct ICAO</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end right panel -->
+</div><!-- end app -->
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const state = {
+  photos: [],
+  currentIdx: -1,
+  bgColor: '#FFFFFF',
+  bgImage: null,
+  clothing: 'none',
+  clothingColor: '#1a2240',
+  photoSizeMm: {w:35, h:45},
+  paperSize: '4R',
+  paperOrientation: 'portrait', // 'portrait' | 'landscape'
+  dpi: 300,
+  zoom: 1.0,
+  rotation: 0,
+  flipped: false,
+  showGuides: true,
+  showGrid: false,
+  showLandmarks: false,
+  mode: 'edit',
+  processing: false,
+  geminiKey: '',
+  enhancements: {smooth:50,blemish:30,brightness:0,contrast:0,saturation:0,sharpness:30,eye:20},
+  currentTab: 'photo',
+  faceData: null,
+};
+
+const PAPER_SIZES = {
+  'A4':   {w:210, h:297, label:'A4',       group:'standard'},
+  'A5':   {w:148, h:210, label:'A5',       group:'standard'},
+  '4R':   {w:102, h:152, label:'4R (4×6")',group:'photo'},
+  '5R':   {w:127, h:178, label:'5R (5×7")',group:'photo'},
+  '6R':   {w:152, h:203, label:'6R (6×8")',group:'photo'},
+  '8R':   {w:203, h:254, label:'8R (8×10")',group:'photo'},
+  '10x15':{w:100, h:150, label:'10×15 cm', group:'photo'},
+  '13x18':{w:130, h:180, label:'13×18 cm', group:'photo'},
+  '15x21':{w:150, h:210, label:'15×21 cm', group:'photo'},
+  '20x30':{w:200, h:300, label:'20×30 cm', group:'photo'},
+  '9x13': {w:90,  h:130, label:'9×13 cm',  group:'photo'},
+  'Letter':{w:216,h:279, label:'Letter',   group:'standard'},
+};
+
+// Photo size definitions for mixed layout
+const PHOTO_SIZES = {
+  '3x4':  {w:30,  h:40,  label:'3×4 cm'},
+  '4x6':  {w:40,  h:60,  label:'4×6 cm'},
+  '35x45':{w:35,  h:45,  label:'35×45mm'},
+  '2x2':  {w:51,  h:51,  label:'2×2 in'},
+};
+
+// ═══════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════
+function notify(msg,type='info',dur=3000){
+  const el=document.createElement('div');
+  el.className=`notif-item ${type}`;el.textContent=msg;
+  document.getElementById('notif').appendChild(el);
+  setTimeout(()=>el.remove(),dur);
+}
+function log(msg,type='info'){
+  const p=document.getElementById('log-panel');
+  const d=document.createElement('div');
+  d.className=`log-line ${type}`;
+  d.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`;
+  p.appendChild(d);p.scrollTop=p.scrollHeight;
+  if(p.children.length>60)p.firstChild.remove();
+}
+function setProcessingStatus(active,label='Processing...'){
+  document.getElementById('proc-dot').className='status-dot'+(active?'':' idle');
+  document.getElementById('proc-label').textContent=active?label:'Idle';
+}
+function updateSlider(name,val){
+  document.getElementById('val-'+name).textContent=val;
+  state.enhancements[name]=parseInt(val);
+}
+function toggleSection(id){
+  document.getElementById(id).classList.toggle('hidden');
+  document.getElementById('arr-'+id).classList.toggle('collapsed');
+}
+function clamp(v){return Math.max(0,Math.min(255,Math.round(v)));}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ═══════════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════════
+function toggleApiKeyVis(){
+  const i=document.getElementById('api-key');
+  i.type=i.type==='password'?'text':'password';
+}
+function setMode(m){
+  state.mode=m;
+  document.querySelectorAll('[id^=btn-mode-]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-mode-'+m)?.classList.add('active');
+}
+function setSize(el,w,h){
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  state.photoSizeMm={w,h};
+  document.getElementById('custom-w').value=w;
+  document.getElementById('custom-h').value=h;
+  updatePrintPreviewInfo();
+  updatePreview();
+}
+function applyCustomSize(){
+  state.photoSizeMm={
+    w:parseFloat(document.getElementById('custom-w').value)||35,
+    h:parseFloat(document.getElementById('custom-h').value)||45
+  };
+  updatePrintPreviewInfo();
+  updatePreview();
+}
+function setBg(el,color){
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  state.bgColor=color;state.bgImage=null;
+  document.getElementById('custom-bg-preview').style.display='none';
+  updatePreview();
+}
+function openCustomBg(){document.getElementById('bg-color-picker').click();}
+function setBgFromPicker(val){state.bgColor=val;state.bgImage=null;updatePreview();}
+function loadCustomBgImage(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      state.bgImage=img;
+      const p=document.getElementById('custom-bg-preview');
+      p.src=e.target.result;p.style.display='block';
+      updatePreview();
+    };img.src=e.target.result;
+  };r.readAsDataURL(f);
+}
+function setClothing(el,key){
+  document.querySelectorAll('.clothing-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');state.clothing=key;
+}
+function setClothingColor(el, color){
+  document.querySelectorAll('.clothing-color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  state.clothingColor = color;
+}
+function openClothingColorPicker(){ document.getElementById('clothing-color-picker').click(); }
+function setClothingColorFromPicker(val){
+  state.clothingColor = val;
+  document.querySelectorAll('.clothing-color-swatch').forEach(s=>s.classList.remove('active'));
+}
+function applyClothingColorOnly(){
+  if(state.currentIdx<0){notify('Chưa chọn ảnh','error');return;}
+  const photo=state.photos[state.currentIdx];
+  if(!photo.origImg){notify('Ảnh chưa tải','error');return;}
+  simulateClothing(photo);
+  notify('Đã đổi màu trang phục','success');
+}
+function switchPaperTab(tab){
+  document.getElementById('paper-tab-photo').classList.toggle('active', tab==='photo');
+  document.getElementById('paper-tab-standard').classList.toggle('active', tab==='standard');
+  document.getElementById('paper-group-photo').style.display = tab==='photo'?'block':'none';
+  document.getElementById('paper-group-standard').style.display = tab==='standard'?'block':'none';
+}
+function setPaper(el,paper){
+  document.querySelectorAll('[id^=pbtn-]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  state.paperSize=paper;
+  const eff=getEffectivePaper();
+  const base=PAPER_SIZES[paper];
+  if(base){
+    document.getElementById('paper-info-name').textContent=base.label;
+    document.getElementById('paper-info-dim').textContent=eff.w+'×'+eff.h+'mm';
+  }
+  updatePrintPreviewInfo();
+  if(state.currentTab==='print') generateMixedPrintLayout();
+}
+
+// ── Orientation helpers ──
+function getEffectivePaper(){
+  const base=PAPER_SIZES[state.paperSize];
+  if(!base) return {w:102,h:152};
+  if(state.paperOrientation==='landscape') return {w:Math.max(base.w,base.h), h:Math.min(base.w,base.h)};
+  // portrait: ensure h >= w
+  return {w:Math.min(base.w,base.h), h:Math.max(base.w,base.h)};
+}
+
+function pickBestOrientation(items){
+  const base=PAPER_SIZES[state.paperSize];
+  if(!base) return 'portrait';
+  const marginMm=parseFloat(document.getElementById('print-margin').value)||4;
+  const gapMm=parseFloat(document.getElementById('print-gap').value)||3;
+  if(!items||!items.length) return base.h>=base.w?'portrait':'landscape';
+  const rP=binPackMixed({w:Math.min(base.w,base.h),h:Math.max(base.w,base.h)},marginMm,gapMm,items);
+  const rL=binPackMixed({w:Math.max(base.w,base.h),h:Math.min(base.w,base.h)},marginMm,gapMm,items);
+  const scoreP=rP.placed*10000+rP.rects.reduce((s,r)=>s+r.w*r.h,0);
+  const scoreL=rL.placed*10000+rL.rects.reduce((s,r)=>s+r.w*r.h,0);
+  return scoreL>scoreP?'landscape':'portrait';
+}
+
+function setOrientation(orient){
+  const items=getMixItems();
+  if(orient==='auto') orient=pickBestOrientation(items);
+  state.paperOrientation=orient;
+  updateOrientationUI(orient);
+  const eff=getEffectivePaper();
+  document.getElementById('paper-info-dim').textContent=eff.w+'×'+eff.h+'mm';
+  updatePrintPreviewInfo();
+  if(state.currentTab==='print') generateMixedPrintLayout();
+  notify(orient==='landscape'?'Đã chuyển sang khổ ngang ↔':'Đã chuyển sang khổ đứng ↕','info',1800);
+}
+
+function updateOrientationUI(orient){
+  const active='flex:1;padding:7px 6px;border-radius:5px;border:1px solid var(--accent);background:var(--accent-glow);color:var(--accent);font-size:11px;font-family:\'Sora\',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;';
+  const inactive='flex:1;padding:7px 6px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:11px;font-family:\'Sora\',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;';
+  ['portrait','landscape','auto'].forEach(o=>{
+    const btn=document.getElementById('orient-'+o);
+    if(btn) btn.style.cssText=(o===orient)?active:inactive;
+  });
+}
+function toggleGuides(){
+  state.showGuides=!state.showGuides;
+  document.getElementById('btn-guides').classList.toggle('active',state.showGuides);
+  drawGuides();
+}
+function toggleLandmarks(){
+  state.showLandmarks=!state.showLandmarks;
+  document.getElementById('btn-landmarks').classList.toggle('active',state.showLandmarks);
+  drawFaceOverlay();
+}
+function resetEnhancements(){
+  const d={smooth:50,blemish:30,brightness:0,contrast:0,saturation:0,sharpness:30,eye:20};
+  Object.entries(d).forEach(([k,v])=>{
+    state.enhancements[k]=v;
+    document.getElementById('sl-'+k).value=v;
+    document.getElementById('val-'+k).textContent=v;
+  });
+  updatePreview();
+}
+function onApiKeyChange(){
+  const key=document.getElementById('api-key').value.trim();
+  state.geminiKey=key;
+  const s=document.getElementById('api-status');
+  if(key.length>10){
+    s.textContent='● Key set – AI features enabled';s.style.color='var(--success)';
+    document.getElementById('clothing-ai-status').textContent='AI clothing enabled';
+  } else {
+    s.textContent='● No key – AI features disabled';s.style.color='var(--text-muted)';
+    document.getElementById('clothing-ai-status').textContent='Requires Gemini API key';
+  }
+}
+function switchTab(tab){
+  state.currentTab=tab;
+  document.getElementById('tab-photo').classList.toggle('active',tab==='photo');
+  document.getElementById('tab-print').classList.toggle('active',tab==='print');
+  const cw=document.getElementById('canvas-wrap');
+  const plw=document.getElementById('print-layout-wrap');
+  const ph=document.getElementById('placeholder');
+  if(tab==='photo'){
+    plw.style.display='none';
+    if(state.currentIdx>=0){cw.style.display='flex';ph.style.display='none';}
+    else{cw.style.display='none';ph.style.display='block';}
+  } else {
+    cw.style.display='none';ph.style.display='none';
+    plw.style.display='inline-block';
+    generateMixedPrintLayout();
+  }
+}
+
+// ═══════════════════════════════════════════
+// MIXED PRINT LAYOUT — qty controls
+// ═══════════════════════════════════════════
+function changeQty(key, delta){
+  const inp=document.getElementById('qty-'+key);
+  let v=parseInt(inp.value)||0;
+  v=Math.max(0,v+delta);
+  inp.value=v;
+  updatePrintPreviewInfo();
+}
+
+function getMixItems(){
+  // Returns array of {sizeKey, w, h, qty, photoSrc}
+  const items=[];
+  for(const [key,sz] of Object.entries(PHOTO_SIZES)){
+    const qty=parseInt(document.getElementById('qty-'+key)?.value)||0;
+    if(qty<=0) continue;
+    const selEl=document.getElementById('photo-sel-'+key);
+    const selVal=selEl?selEl.value:'current';
+    items.push({sizeKey:key, w:sz.w, h:sz.h, label:sz.label, qty, photoSrc:selVal});
+  }
+  return items;
+}
+
+function updatePrintPreviewInfo(){
+  const paper=getEffectivePaper();
+  const marginMm=parseFloat(document.getElementById('print-margin').value)||4;
+  const gapMm=parseFloat(document.getElementById('print-gap').value)||3;
+  const items=getMixItems();
+  const totalQty=items.reduce((s,i)=>s+i.qty,0);
+  document.getElementById('pi-total').textContent=totalQty;
+
+  if(totalQty===0){
+    document.getElementById('pi-fits').textContent='—';
+    document.getElementById('pi-space').textContent='—';
+    document.getElementById('pi-warn-row').style.display='none';
+    return;
+  }
+
+  // Run bin packing to check fit
+  const result=binPackMixed(paper,marginMm,gapMm,items);
+  document.getElementById('pi-fits').textContent=result.placed+'/'+totalQty+' placed';
+
+  const paperArea=(paper.w-marginMm*2)*(paper.h-marginMm*2);
+  const usedArea=result.rects.reduce((s,r)=>s+(r.w*r.h),0);
+  const pct=paperArea>0?Math.round((usedArea/paperArea)*100):0;
+  document.getElementById('pi-space').textContent=pct+'% utilization';
+
+  if(result.placed<totalQty){
+    document.getElementById('pi-warn-row').style.display='flex';
+    document.getElementById('pi-warn-msg').textContent=`⚠ ${totalQty-result.placed} photos don't fit on 1 sheet`;
+  } else {
+    document.getElementById('pi-warn-row').style.display='none';
+  }
+  // Update photo selector options
+  updatePhotoSelectors();
+}
+
+function updatePhotoSelectors(){
+  const done=state.photos.filter(p=>p.processedCanvas||p.origImg);
+  for(const key of Object.keys(PHOTO_SIZES)){
+    const sel=document.getElementById('photo-sel-'+key);
+    if(!sel) continue;
+    const cur=sel.value;
+    sel.innerHTML='<option value="current">Use current/queue photo</option>';
+    done.forEach((p,i)=>{
+      const opt=document.createElement('option');
+      opt.value='idx:'+i;
+      opt.textContent=p.name.substring(0,22)+(p.name.length>22?'…':'');
+      sel.appendChild(opt);
+    });
+    if(cur&&cur!=='current') sel.value=cur;
+  }
+}
+
+// ═══════════════════════════════════════════
+// BIN PACKING — Guillotine / shelf algorithm
+// Guarantees NO overlap
+// ═══════════════════════════════════════════
+/**
+ * Places rectangles of varying sizes onto a sheet using
+ * a shelf-first approach with best-fit heuristic.
+ * Returns {placed, rects:[{x,y,w,h,sizeKey,photoIdx}]}
+ */
+function binPackMixed(paper, marginMm, gapMm, items){
+  const availW = paper.w - marginMm*2;
+  const availH = paper.h - marginMm*2;
+  const rects = [];
+
+  // Expand items into individual slots
+  const slots = [];
+  let photoCounter = 0;
+  for(const item of items){
+    for(let i=0;i<item.qty;i++){
+      slots.push({w:item.w, h:item.h, sizeKey:item.sizeKey, photoIdx:photoCounter, photoSrc:item.photoSrc});
+      photoCounter++;
+    }
+  }
+
+  // Sort by height desc (tallest first), then width desc — better packing
+  slots.sort((a,b)=>b.h-a.h || b.w-a.w);
+
+  // Shelf-based packing
+  // Each shelf: {x_cursor, y_start, shelf_height, remaining_width}
+  const shelves = [{x:marginMm, y:marginMm, shelfH:0, remainW:availW}];
+  let placed = 0;
+
+  for(const slot of slots){
+    let bestShelfIdx = -1;
+    let bestWaste = Infinity;
+
+    // Find best shelf that fits
+    for(let si=0;si<shelves.length;si++){
+      const sh = shelves[si];
+      // Check width fits
+      if(slot.w > sh.remainW) continue;
+      // Check if adding this to shelf won't overflow height
+      // If shelf is new (shelfH=0), height is slot.h; else must fit existing shelfH or expand
+      const newShelfH = Math.max(sh.shelfH, slot.h);
+      // Check vertical space remaining for this shelf
+      const usedY = sh.y + newShelfH;
+      // Check all shelves below don't collide
+      let bottomOk = true;
+      for(let sj=si+1;sj<shelves.length;sj++){
+        if(shelves[sj].y < usedY + gapMm){bottomOk=false;break;}
+      }
+      // Check overall height
+      if(sh.y + newShelfH > marginMm + availH) continue;
+      if(!bottomOk) continue;
+
+      // Waste = wasted height increase
+      const waste = newShelfH - sh.shelfH + (sh.remainW - slot.w);
+      if(waste < bestWaste){bestWaste=waste;bestShelfIdx=si;}
+    }
+
+    if(bestShelfIdx>=0){
+      const sh = shelves[bestShelfIdx];
+      rects.push({
+        x: sh.x, y: sh.y,
+        w: slot.w, h: slot.h,
+        sizeKey: slot.sizeKey,
+        photoSrc: slot.photoSrc,
+        photoIdx: placed
+      });
+      // Update shelf
+      sh.x += slot.w + gapMm;
+      sh.remainW -= slot.w + gapMm;
+      const newH = Math.max(sh.shelfH, slot.h);
+      if(newH > sh.shelfH){
+        // Shelf height grew — open new shelf after this one
+        const nextY = sh.y + newH + gapMm;
+        sh.shelfH = newH;
+        // Insert new shelf only if space remains and no shelf exists there
+        const shelfExists = shelves.some(s=>Math.abs(s.y-nextY)<1);
+        if(!shelfExists && nextY + 10 < marginMm + availH){
+          shelves.splice(bestShelfIdx+1,0,{x:marginMm, y:nextY, shelfH:0, remainW:availW});
+        }
+      }
+      placed++;
+    }
+    // If no shelf fits, try opening a new shelf at bottom of all existing
+    else {
+      // Find lowest y + shelfH
+      let bottomY = marginMm;
+      for(const sh of shelves){
+        const bot = sh.y + sh.shelfH + gapMm;
+        if(bot > bottomY) bottomY = bot;
+      }
+      if(bottomY + slot.h <= marginMm + availH){
+        // New shelf
+        const newSh = {x:marginMm, y:bottomY, shelfH:slot.h, remainW:availW - slot.w - gapMm};
+        shelves.push(newSh);
+        rects.push({
+          x:marginMm, y:bottomY,
+          w:slot.w, h:slot.h,
+          sizeKey:slot.sizeKey,
+          photoSrc:slot.photoSrc,
+          photoIdx:placed
+        });
+        placed++;
+      }
+      // else: can't fit — skip
+    }
+  }
+
+  return {placed, rects, totalSlots:slots.length};
+}
+
+// ═══════════════════════════════════════════
+// PRINT LAYOUT — interactive drag-drop state
+// ═══════════════════════════════════════════
+const printState = {
+  rects: [],          // [{x,y,w,h,sizeKey,photoSrc,photoSrcResolved}, ...]  — in mm
+  paper: null,
+  displayScale: 1,
+  mmToPx: 300/25.4,
+  dragIdx: -1,
+  dragOffX: 0,
+  dragOffY: 0,
+  swapTargetIdx: -1,
+};
+
+function generateMixedPrintLayout(){
+  const paper=getEffectivePaper();
+  const dpi=parseInt(document.getElementById('dpi-select').value)||300;
+  const marginMm=parseFloat(document.getElementById('print-margin').value)||4;
+  const gapMm=parseFloat(document.getElementById('print-gap').value)||3;
+  const items=getMixItems();
+
+  if(items.length===0){
+    notify('Cần chọn số lượng ảnh trước','error');
+    return;
+  }
+
+  const mmToPx=dpi/25.4;
+  const pW=Math.round(paper.w*mmToPx);
+  const pH=Math.round(paper.h*mmToPx);
+
+  const result=binPackMixed(paper,marginMm,gapMm,items);
+
+  // Compute display scale to fit canvas-area
+  const area=document.getElementById('canvas-area');
+  const maxW=area.clientWidth-32, maxH=area.clientHeight-32;
+  const displayScale=Math.min(maxW/pW, maxH/pH, 1);
+  const dispW=Math.round(pW*displayScale);
+  const dispH=Math.round(pH*displayScale);
+
+  // Resolve photo sources for each rect
+  const done=state.photos.filter(p=>p.processedCanvas||p.origImg);
+  const currentPhoto=state.currentIdx>=0?state.photos[state.currentIdx]:null;
+  let slotIdx=0;
+  const rects=result.rects.map(rect=>{
+    let photoSrc=null;
+    if(rect.photoSrc==='current'||rect.photoSrc===undefined){
+      if(done.length>0){const p=done[slotIdx%done.length];photoSrc=p.processedCanvas||p.origImg;}
+      else if(currentPhoto) photoSrc=currentPhoto.processedCanvas||currentPhoto.origImg;
+    } else if(rect.photoSrc.startsWith('idx:')){
+      const idx=parseInt(rect.photoSrc.slice(4));
+      if(done[idx]) photoSrc=done[idx].processedCanvas||done[idx].origImg;
+    }
+    slotIdx++;
+    return {...rect, photoSrcResolved: photoSrc};
+  });
+
+  // Save to printState
+  printState.rects = rects;
+  printState.paper = paper;
+  printState.displayScale = displayScale;
+  printState.mmToPx = mmToPx;
+
+  // Size the canvas & wrapper
+  const printC=document.getElementById('print-canvas');
+  const plw=document.getElementById('print-layout-wrap');
+  printC.width=dispW; printC.height=dispH;
+  plw.style.width=dispW+'px';
+  plw.style.height=dispH+'px';
+
+  // Draw static background (white paper, cut marks, labels) on canvas
+  renderPrintBackground(printC, rects, paper, displayScale, mmToPx, result);
+
+  // Build interactive drag layer
+  buildDragLayer(rects, displayScale, mmToPx, dispW, dispH);
+
+  // Update mini preview
+  updateMiniPreview(printC, pW, pH);
+
+  // Show hint
+  showDragHint();
+
+  log(`Layout: ${result.placed}/${result.totalSlots} ảnh trên ${state.paperSize}`,'ok');
+  updatePrintPreviewInfo();
+}
+
+// Draw only the static parts: white bg, paper border, cut marks, size labels
+function renderPrintBackground(printC, rects, paper, displayScale, mmToPx, result){
+  const dispW=printC.width, dispH=printC.height;
+  const ctx=printC.getContext('2d');
+
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,dispW,dispH);
+  ctx.strokeStyle='#ccc';ctx.lineWidth=1;ctx.setLineDash([]);
+  ctx.strokeRect(0.5,0.5,dispW-1,dispH-1);
+
+  const sizeBorders={
+    '3x4':'rgba(79,142,247,0.45)','4x6':'rgba(61,214,140,0.4)',
+    '35x45':'rgba(245,166,35,0.45)','2x2':'rgba(168,85,247,0.45)',
+  };
+
+  for(const rect of rects){
+    const rx=Math.round(rect.x*mmToPx*displayScale);
+    const ry=Math.round(rect.y*mmToPx*displayScale);
+    const rw=Math.round(rect.w*mmToPx*displayScale);
+    const rh=Math.round(rect.h*mmToPx*displayScale);
+
+    // Dashed border
+    ctx.strokeStyle=sizeBorders[rect.sizeKey]||'rgba(0,0,0,0.3)';
+    ctx.lineWidth=0.8; ctx.setLineDash([3,3]);
+    ctx.strokeRect(rx+0.5,ry+0.5,rw-1,rh-1);
+    ctx.setLineDash([]);
+
+    // Corner cut marks
+    const cm=Math.min(6,rw*0.1,rh*0.1);
+    ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=0.8;
+    drawCutMark(ctx,rx,ry,cm,'tl');
+    drawCutMark(ctx,rx+rw,ry,cm,'tr');
+    drawCutMark(ctx,rx,ry+rh,cm,'bl');
+    drawCutMark(ctx,rx+rw,ry+rh,cm,'br');
+  }
+
+  // Overflow warning
+  const unplaced=(result.totalSlots||0)-rects.length;
+  if(unplaced>0){
+    ctx.fillStyle='rgba(245,95,95,0.15)';ctx.fillRect(0,0,dispW,20);
+    ctx.fillStyle='#f55f5f';ctx.font='bold 10px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(`⚠ ${unplaced} ảnh không vừa trang`,dispW/2,10);
+  }
+}
+
+// Build the draggable overlay cells
+function buildDragLayer(rects, displayScale, mmToPx, dispW, dispH){
+  const layer=document.getElementById('print-drag-layer');
+  layer.innerHTML='';
+  layer.style.pointerEvents='auto';
+  layer.style.width=dispW+'px';
+  layer.style.height=dispH+'px';
+  layer.style.position='absolute';
+  layer.style.top='0'; layer.style.left='0';
+
+  rects.forEach((rect, idx)=>{
+    const rx=Math.round(rect.x*mmToPx*displayScale);
+    const ry=Math.round(rect.y*mmToPx*displayScale);
+    const rw=Math.round(rect.w*mmToPx*displayScale);
+    const rh=Math.round(rect.h*mmToPx*displayScale);
+
+    const cell=document.createElement('div');
+    cell.className='print-cell';
+    cell.dataset.idx=String(idx);
+    cell.style.cssText=`position:absolute;left:${rx}px;top:${ry}px;width:${rw}px;height:${rh}px;overflow:hidden;box-sizing:border-box;cursor:grab;border:1.5px dashed transparent;`;
+
+    // Inner wrapper holds only the photo content (easy to swap)
+    const inner=document.createElement('div');
+    inner.className='cell-inner';
+    inner.style.cssText='position:absolute;inset:0;pointer-events:none;';
+    renderCellInner(inner, rect, rw, rh, displayScale);
+    cell.appendChild(inner);
+
+    // Size label (stays with cell position, not content)
+    const lbl=document.createElement('div');
+    lbl.className='print-cell-label';
+    lbl.style.cssText='position:absolute;bottom:0;left:0;right:0;height:13px;background:rgba(0,0,0,0.55);color:#fff;font-size:8px;font-family:monospace;text-align:center;line-height:13px;pointer-events:none;z-index:3;';
+    lbl.textContent=PHOTO_SIZES[rect.sizeKey]?.label||rect.sizeKey;
+    cell.appendChild(lbl);
+
+    // Drag handle badge
+    const handle=document.createElement('div');
+    handle.style.cssText='position:absolute;top:2px;left:2px;width:16px;height:16px;background:rgba(79,142,247,0.85);border-radius:3px;color:#fff;font-size:10px;text-align:center;line-height:16px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:4;';
+    handle.textContent='⠿';
+    cell.appendChild(handle);
+
+    cell.addEventListener('mouseenter',()=>{ handle.style.opacity='1'; cell.style.borderColor='rgba(79,142,247,0.7)'; });
+    cell.addEventListener('mouseleave',()=>{ handle.style.opacity='0'; cell.style.borderColor='transparent'; });
+    cell.addEventListener('mousedown', onCellMouseDown);
+    cell.addEventListener('touchstart', onCellTouchStart, {passive:false});
+
+    layer.appendChild(cell);
+  });
+}
+
+// Render photo image into a cell's inner wrapper
+function renderCellInner(inner, rect, rw, rh, displayScale){
+  inner.innerHTML='';
+  if(rect.photoSrcResolved){
+    const cv=document.createElement('canvas');
+    cv.width=rw; cv.height=rh;
+    cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;';
+    const ictx=cv.getContext('2d');
+    const src=rect.photoSrcResolved;
+    const srcW=src.naturalWidth||src.width;
+    const srcH=src.naturalHeight||src.height;
+    if(srcW>0&&srcH>0){
+      const sc=Math.max(rw/srcW,rh/srcH);
+      const dw=srcW*sc, dh=srcH*sc;
+      ictx.drawImage(src,(rw-dw)/2,(rh-dh)/2,dw,dh);
+    }
+    inner.appendChild(cv);
+  } else {
+    inner.style.background='rgba(100,120,200,0.08)';
+    inner.style.display='flex';
+    inner.style.alignItems='center';
+    inner.style.justifyContent='center';
+    inner.style.color='#bbb';
+    inner.style.fontSize=Math.max(8,Math.round(9*displayScale))+'px';
+    inner.textContent=PHOTO_SIZES[rect.sizeKey]?.label||'?';
+  }
+}
+
+function showDragHint(){
+  const existing=document.getElementById('print-drag-hint');
+  if(existing) existing.remove();
+  const area=document.getElementById('canvas-area');
+  const hint=document.createElement('div');
+  hint.id='print-drag-hint';
+  hint.textContent='⠿ Kéo thả để đổi chỗ hai ô ảnh';
+  hint.style.cssText='position:absolute;top:6px;left:50%;transform:translateX(-50%);background:rgba(79,142,247,0.18);border:1px solid rgba(79,142,247,0.4);border-radius:20px;padding:3px 14px;font-size:10px;color:#4f8ef7;white-space:nowrap;pointer-events:none;z-index:300;transition:opacity 1s;';
+  area.appendChild(hint);
+  setTimeout(()=>{ hint.style.opacity='0'; },2800);
+  setTimeout(()=>{ hint.remove(); },4000);
+}
+
+// ══════════════════════════════════════════
+// DRAG & DROP — ghost-based swap
+// ══════════════════════════════════════════
+const drag={
+  active: false,
+  srcIdx: -1,
+  ghost: null,
+  offX: 0, offY: 0,
+  overIdx: -1,
+};
+
+function getCellByIdx(idx){
+  return document.querySelector(`#print-drag-layer .print-cell[data-idx="${idx}"]`);
+}
+
+function onCellMouseDown(e){
+  if(e.button!==0) return;
+  e.preventDefault(); e.stopPropagation();
+  const cell=e.currentTarget;
+  beginDrag(cell, e.clientX, e.clientY);
+}
+function onCellTouchStart(e){
+  e.preventDefault();
+  const t=e.touches[0];
+  beginDrag(e.currentTarget, t.clientX, t.clientY);
+}
+
+function beginDrag(cell, cx, cy){
+  const idx=parseInt(cell.dataset.idx);
+  if(isNaN(idx)) return;
+
+  drag.active=true;
+  drag.srcIdx=idx;
+  drag.overIdx=-1;
+
+  // Offset from cell top-left to cursor
+  const cr=cell.getBoundingClientRect();
+  drag.offX=cx-cr.left;
+  drag.offY=cy-cr.top;
+
+  // Create ghost: full visual clone of the cell's inner canvas
+  const ghost=document.createElement('canvas');
+  ghost.id='drag-ghost';
+  const rect=printState.rects[idx];
+  const ds=printState.displayScale, mp=printState.mmToPx;
+  const rw=Math.round(rect.w*mp*ds);
+  const rh=Math.round(rect.h*mp*ds);
+  ghost.width=rw; ghost.height=rh;
+  ghost.style.cssText=`position:fixed;pointer-events:none;z-index:9999;border-radius:3px;border:2px solid #4f8ef7;box-shadow:0 6px 24px rgba(0,0,0,.5);opacity:0.88;`;
+  // Draw photo onto ghost from the cell's inner canvas
+  const srcInner=cell.querySelector('.cell-inner canvas');
+  if(srcInner){ ghost.getContext('2d').drawImage(srcInner,0,0,rw,rh); }
+  ghost.style.width=rw+'px'; ghost.style.height=rh+'px';
+  ghost.style.left=(cx-drag.offX)+'px';
+  ghost.style.top=(cy-drag.offY)+'px';
+  document.body.appendChild(ghost);
+
+  // Dim source cell
+  cell.style.opacity='0.3';
+
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup',   onDragEnd);
+  document.addEventListener('touchmove', onTouchMove, {passive:false});
+  document.addEventListener('touchend',  onDragEnd);
+}
+
+function onTouchMove(e){ e.preventDefault(); const t=e.touches[0]; onDragMove({clientX:t.clientX,clientY:t.clientY}); }
+
+function onDragMove(e){
+  if(!drag.active) return;
+
+  // Move ghost
+  const ghost=document.getElementById('drag-ghost');
+  if(ghost){ ghost.style.left=(e.clientX-drag.offX)+'px'; ghost.style.top=(e.clientY-drag.offY)+'px'; }
+
+  // Find hovered cell by checking cursor against each cell's bounding rect
+  const layer=document.getElementById('print-drag-layer');
+  const cells=layer.querySelectorAll('.print-cell');
+  let foundOver=-1;
+
+  cells.forEach(c=>{
+    const ci=parseInt(c.dataset.idx);
+    c.style.borderColor='transparent';
+    c.style.boxShadow='none';
+    if(ci===drag.srcIdx) return;
+    const r=c.getBoundingClientRect();
+    if(e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom){
+      foundOver=ci;
+    }
+  });
+
+  if(foundOver>=0){
+    const tc=getCellByIdx(foundOver);
+    if(tc){ tc.style.borderColor='#3dd68c'; tc.style.boxShadow='0 0 0 2px rgba(61,214,140,0.4)'; }
+  }
+  drag.overIdx=foundOver;
+}
+
+function onDragEnd(e){
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup',   onDragEnd);
+  document.removeEventListener('touchmove', onTouchMove);
+  document.removeEventListener('touchend',  onDragEnd);
+
+  // Remove ghost
+  const ghost=document.getElementById('drag-ghost');
+  if(ghost) ghost.remove();
+
+  if(!drag.active){ drag.active=false; return; }
+  drag.active=false;
+
+  const srcIdx=drag.srcIdx;
+  const dstIdx=drag.overIdx;
+
+  // Restore all cells
+  const layer=document.getElementById('print-drag-layer');
+  layer.querySelectorAll('.print-cell').forEach(c=>{
+    c.style.opacity='';
+    c.style.borderColor='transparent';
+    c.style.boxShadow='none';
+  });
+
+  if(dstIdx<0 || dstIdx===srcIdx){
+    // No valid drop target — nothing to do
+    return;
+  }
+
+  // ── PERFORM SWAP ──
+  // Swap photoSrcResolved in data
+  const tmp=printState.rects[srcIdx].photoSrcResolved;
+  printState.rects[srcIdx].photoSrcResolved=printState.rects[dstIdx].photoSrcResolved;
+  printState.rects[dstIdx].photoSrcResolved=tmp;
+
+  // Re-render the inner content of both cells in-place
+  const ds=printState.displayScale, mp=printState.mmToPx;
+  [srcIdx, dstIdx].forEach(i=>{
+    const cell=getCellByIdx(i);
+    if(!cell) return;
+    const rect=printState.rects[i];
+    const rw=Math.round(rect.w*mp*ds);
+    const rh=Math.round(rect.h*mp*ds);
+    const inner=cell.querySelector('.cell-inner');
+    if(inner) renderCellInner(inner, rect, rw, rh, ds);
+    // Flash green border
+    cell.style.transition='box-shadow 0.25s,border-color 0.25s';
+    cell.style.borderColor='#3dd68c';
+    cell.style.boxShadow='0 0 0 3px rgba(61,214,140,0.5)';
+    setTimeout(()=>{ cell.style.borderColor='transparent'; cell.style.boxShadow='none'; cell.style.transition=''; },600);
+  });
+
+  // Update mini preview sidebar
+  updateMiniPreview(document.getElementById('print-canvas'), printState.paper.w*mp, printState.paper.h*mp);
+  notify('✓ Đã đổi vị trí ảnh','success',1500);
+}
+
+// After full rebuild (layout reset)
+function rebuildAfterSwap(){
+  const ds=printState.displayScale, mp=printState.mmToPx;
+  const printC=document.getElementById('print-canvas');
+  const fakeResult={totalSlots:printState.rects.length, placed:printState.rects.length};
+  renderPrintBackground(printC, printState.rects, printState.paper, ds, mp, fakeResult);
+  buildDragLayer(printState.rects, ds, mp, printC.width, printC.height);
+  updateMiniPreview(printC, printState.paper.w*mp, printState.paper.h*mp);
+}
+
+function updateMiniPreview(printC, pW, pH){
+  // Composite canvas+drag layer into mini preview
+  const mini=document.getElementById('print-preview-mini');
+  mini.width=mini.offsetWidth||230;
+  mini.height=Math.round((mini.offsetWidth||230)*(pH/pW));
+  const mctx=mini.getContext('2d');
+  // Draw background canvas
+  mctx.drawImage(printC,0,0,mini.width,mini.height);
+  // Draw photos from rects
+  const ds=printState.displayScale, mp=printState.mmToPx;
+  for(const rect of printState.rects){
+    if(!rect.photoSrcResolved) continue;
+    const rx=Math.round(rect.x*mp*ds), ry=Math.round(rect.y*mp*ds);
+    const rw=Math.round(rect.w*mp*ds), rh=Math.round(rect.h*mp*ds);
+    // Scale from display coords to mini coords
+    const sx=mini.width/printC.width, sy=mini.height/printC.height;
+    const mx=Math.round(rx*sx), my=Math.round(ry*sy);
+    const mw=Math.round(rw*sx), mh=Math.round(rh*sy);
+    const src=rect.photoSrcResolved;
+    const srcW=src.naturalWidth||src.width, srcH=src.naturalHeight||src.height;
+    const sc=Math.max(mw/srcW,mh/srcH);
+    const dw=srcW*sc, dh=srcH*sc;
+    mctx.save();
+    mctx.beginPath();mctx.rect(mx,my,mw,mh);mctx.clip();
+    try{mctx.drawImage(src,mx+(mw-dw)/2,my+(mh-dh)/2,dw,dh);}catch(ex){}
+    mctx.restore();
+  }
+}
+
+function drawCutMark(ctx,x,y,size,corner){
+  ctx.beginPath();
+  if(corner==='tl'){ctx.moveTo(x+size,y);ctx.lineTo(x,y);ctx.lineTo(x,y+size);}
+  else if(corner==='tr'){ctx.moveTo(x-size,y);ctx.lineTo(x,y);ctx.lineTo(x,y+size);}
+  else if(corner==='bl'){ctx.moveTo(x+size,y);ctx.lineTo(x,y);ctx.lineTo(x,y-size);}
+  else if(corner==='br'){ctx.moveTo(x-size,y);ctx.lineTo(x,y);ctx.lineTo(x,y-size);}
+  ctx.stroke();
+}
+
+// ═══════════════════════════════════════════
+// ADVANCED FACE DETECTION
+// Multi-pass algorithm:
+// 1. Skin pixel density map (HSV-based, more accurate than RGB)
+// 2. Connected component analysis to find largest face region
+// 3. Gradient-based head top detection
+// 4. Symmetry scoring to center face box accurately
+// ═══════════════════════════════════════════
+async function detectFaceAdvanced(img){
+  const MAX_DIM=480;
+  const scale=Math.min(MAX_DIM/img.naturalWidth||img.width, MAX_DIM/img.naturalHeight||img.height, 1);
+  const cw=Math.round((img.naturalWidth||img.width)*scale);
+  const ch=Math.round((img.naturalHeight||img.height)*scale);
+
+  const c=document.createElement('canvas');
+  c.width=cw;c.height=ch;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(img,0,0,cw,ch);
+  const imgData=ctx.getImageData(0,0,cw,ch);
+  const d=imgData.data;
+
+  // Step 1: Build skin probability map using HSV + YCrCb criteria
+  const skinMap=new Uint8Array(cw*ch);
+  for(let y=0;y<ch;y++){
+    for(let x=0;x<cw;x++){
+      const i=(y*cw+x)*4;
+      const r=d[i],g=d[i+1],b=d[i+2];
+      skinMap[y*cw+x]=isSkinHSV(r,g,b)?255:0;
+    }
+  }
+
+  // Step 2: Morphological close — fill small gaps in skin region (3x3 dilation)
+  const dilated=morphDilate(skinMap,cw,ch,3);
+
+  // Step 3: Find connected components — keep largest blob
+  const largest=largestBlob(dilated,cw,ch);
+  if(!largest || largest.count<50){
+    return fallbackFaceData(img);
+  }
+
+  // Step 4: Bounding box of largest blob with padding
+  let bx=largest.minX, by=largest.minY;
+  let bw=largest.maxX-largest.minX, bh=largest.maxY-largest.minY;
+
+  // Sanity: face should be somewhat tall
+  if(bw<10||bh<10) return fallbackFaceData(img);
+
+  // Step 5: Gradient-based top-of-head detection
+  // Search above skin region for dark hair pixels
+  const headTop=findHeadTop(d,cw,ch,bx,by,bw,dilated);
+  by=Math.min(by,headTop);
+  bh=largest.maxY-by;
+
+  // Step 6: Symmetry refinement — adjust horizontal center
+  const symCenter=findSymmetryAxis(dilated,cw,ch,bx,by,bw,bh);
+  // Re-center box around symmetry axis
+  const halfW=bw/2;
+  bx=Math.max(0,symCenter-halfW);
+  bw=Math.min(cw-bx,bw);
+
+  // Step 7: Expand bounding box with adaptive padding
+  const padX=bw*0.18, padY_top=bh*0.15, padY_bot=bh*0.12;
+  const finalX=Math.max(0,(bx-padX)/scale);
+  const finalY=Math.max(0,(by-padY_top)/scale);
+  const finalW=Math.min(img.naturalWidth||img.width,(bw+padX*2)/scale);
+  const finalH=Math.min(img.naturalHeight||img.height,(bh+padY_top+padY_bot)/scale);
+
+  // Step 8: Estimate landmarks from face box
+  const origW=img.naturalWidth||img.width;
+  const origH=img.naturalHeight||img.height;
+  const landmarks=estimateLandmarks(finalX,finalY,finalW,finalH);
+
+  // Confidence score based on skin pixel density
+  const faceArea=(bw*bh);
+  const skinDensity=faceArea>0?largest.count/faceArea:0;
+  const confidence=Math.min(100,Math.round(skinDensity*130));
+
+  return {
+    box:{x:finalX,y:finalY,w:finalW,h:finalH},
+    origW, origH,
+    landmarks,
+    confidence,
+    skinDensity,
+  };
+}
+
+function isSkinHSV(r,g,b){
+  // Convert to normalized
+  const nr=r/255,ng=g/255,nb=b/255;
+  const max=Math.max(nr,ng,nb),min=Math.min(nr,ng,nb);
+  const delta=max-min;
+
+  // Value check
+  if(max<0.2||max>0.98) return false;
+
+  // Saturation
+  const sat=max>0?delta/max:0;
+  if(sat<0.08||sat>0.75) return false;
+
+  // Hue
+  let h=0;
+  if(delta>0){
+    if(max===nr) h=((ng-nb)/delta)%6;
+    else if(max===ng) h=(nb-nr)/delta+2;
+    else h=(nr-ng)/delta+4;
+    h=h*60;if(h<0)h+=360;
+  }
+  // Skin hue range: ~0–35 degrees
+  if(h>38&&h<330) return false;
+
+  // YCrCb check (more robust)
+  const Y=0.299*r+0.587*g+0.114*b;
+  const Cr=0.5*r-0.4187*g-0.0813*b+128;
+  const Cb=-0.1687*r-0.3313*g+0.5*b+128;
+  if(Cr<133||Cr>173) return false;
+  if(Cb<77||Cb>127) return false;
+  if(Y<50||Y>240) return false;
+
+  return true;
+}
+
+function morphDilate(map,w,h,radius){
+  const out=new Uint8Array(map.length);
+  const r=Math.floor(radius/2);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      let v=0;
+      outer:for(let dy=-r;dy<=r;dy++){
+        for(let dx=-r;dx<=r;dx++){
+          const nx=x+dx,ny=y+dy;
+          if(nx>=0&&ny>=0&&nx<w&&ny<h&&map[ny*w+nx]){v=255;break outer;}
+        }
+      }
+      out[y*w+x]=v;
+    }
+  }
+  return out;
+}
+
+function largestBlob(map,w,h){
+  const visited=new Uint8Array(map.length);
+  let bestBlob=null;
+
+  for(let startY=0;startY<h;startY++){
+    for(let startX=0;startX<w;startX++){
+      const si=startY*w+startX;
+      if(!map[si]||visited[si]) continue;
+      // BFS
+      const queue=[si];visited[si]=1;
+      let minX=startX,maxX=startX,minY=startY,maxY=startY,count=0;
+      let qi=0;
+      while(qi<queue.length){
+        const ci=queue[qi++];
+        const cx=ci%w,cy=Math.floor(ci/w);
+        count++;
+        if(cx<minX)minX=cx;if(cx>maxX)maxX=cx;
+        if(cy<minY)minY=cy;if(cy>maxY)maxY=cy;
+        const neighbors=[ci-1,ci+1,ci-w,ci+w];
+        for(const ni of neighbors){
+          if(ni>=0&&ni<map.length&&map[ni]&&!visited[ni]){
+            visited[ni]=1;queue.push(ni);
+          }
+        }
+      }
+      if(!bestBlob||count>bestBlob.count){
+        bestBlob={count,minX,maxX,minY,maxY};
+      }
+    }
+  }
+  return bestBlob;
+}
+
+function findHeadTop(d,cw,ch,bx,by,bw,skinMap){
+  // Search above the skin region for dark hair pixels
+  const searchTop=Math.max(0,by-Math.round(bh*0.3));
+  const centerX=Math.round(bx+bw/2);
+  const searchXStart=Math.max(0,centerX-Math.round(bw*0.25));
+  const searchXEnd=Math.min(cw,centerX+Math.round(bw*0.25));
+  const bh=by;
+
+  // Walk upward from skin top
+  for(let y=by;y>=searchTop;y--){
+    let darkCount=0,totalCount=0;
+    for(let x=searchXStart;x<searchXEnd;x++){
+      const i=(y*cw+x)*4;
+      const lum=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114);
+      if(lum<160) darkCount++;
+      totalCount++;
+    }
+    // If >20% of row is dark (hair), this is still head
+    if(totalCount>0&&darkCount/totalCount>0.15) return y;
+  }
+  return by;
+}
+
+function findSymmetryAxis(skinMap,cw,ch,bx,by,bw,bh){
+  // Compute column skin pixel counts in face region
+  const cols=new Float32Array(cw);
+  for(let y=Math.max(0,by);y<Math.min(ch,by+bh);y++){
+    for(let x=Math.max(0,bx);x<Math.min(cw,bx+bw);x++){
+      if(skinMap[y*cw+x]) cols[x]++;
+    }
+  }
+  // Find center of mass
+  let sumW=0,sumX=0;
+  for(let x=Math.max(0,bx);x<Math.min(cw,bx+bw);x++){
+    sumW+=cols[x];sumX+=x*cols[x];
+  }
+  return sumW>0?sumX/sumW:bx+bw/2;
+}
+
+function estimateLandmarks(fx,fy,fw,fh){
+  // Estimate face landmarks from face bounding box
+  return [
+    // Left eye
+    {x:fx+fw*0.32, y:fy+fh*0.36, type:'eye'},
+    // Right eye
+    {x:fx+fw*0.68, y:fy+fh*0.36, type:'eye'},
+    // Nose tip
+    {x:fx+fw*0.50, y:fy+fh*0.52, type:'nose'},
+    // Mouth left
+    {x:fx+fw*0.36, y:fy+fh*0.68, type:'mouth'},
+    // Mouth right
+    {x:fx+fw*0.64, y:fy+fh*0.68, type:'mouth'},
+    // Chin
+    {x:fx+fw*0.50, y:fy+fh*0.84, type:'chin'},
+    // Left cheek
+    {x:fx+fw*0.18, y:fy+fh*0.50, type:'cheek'},
+    // Right cheek
+    {x:fx+fw*0.82, y:fy+fh*0.50, type:'cheek'},
+  ];
+}
+
+function fallbackFaceData(img){
+  const ow=img.naturalWidth||img.width;
+  const oh=img.naturalHeight||img.height;
+  return {
+    box:{x:ow*0.15, y:oh*0.04, w:ow*0.70, h:oh*0.72},
+    origW:ow, origH:oh,
+    landmarks:estimateLandmarks(ow*0.15,oh*0.04,ow*0.70,oh*0.72),
+    confidence:20,
+    skinDensity:0,
+  };
+}
+
+// ═══════════════════════════════════════════
+// ICAO VALIDATION — calibrated for real photos
+// ═══════════════════════════════════════════
+async function autoAnalyze(photo){
+  if(!photo.origImg) return;
+  const fd=await detectFaceAdvanced(photo.origImg);
+  state.faceData=fd;
+  photo.icao=validateICAO(photo.origImg, fd);
+  updateICAOBadges(photo.icao);
+  updateICAODetails(photo.icao);
+  // Show face confidence
+  const conf=fd.confidence||0;
+  const cLabel=document.getElementById('face-conf-label');
+  cLabel.textContent=`Face: ${conf}% conf`;
+  cLabel.style.color=conf>70?'var(--success)':conf>40?'var(--warning)':'var(--danger)';
+  if(state.showLandmarks) drawFaceOverlay();
+}
+
+function validateICAO(img, fd){
+  const w=img.naturalWidth||img.width;
+  const h=img.naturalHeight||img.height;
+  const box=fd.box;
+  const results={};
+
+  // HEAD SIZE: head should be 70-80% of photo height (ICAO standard)
+  // Face box height to total image height
+  const headRatio=box.h/h;
+  // Be more lenient: 55-92% is acceptable range
+  results.headSize={
+    ok: headRatio>=0.55 && headRatio<=0.92,
+    val: (headRatio*100).toFixed(0)+'%',
+    msg: `Head height ${(headRatio*100).toFixed(0)}% of photo (ideal 70–80%)`
+  };
+
+  // EYE POSITION: eyes should be at 55-75% from top of photo
+  // Eye Y relative to photo height
+  const eyeY=(box.y + box.h*0.36) / h;
+  results.eyePos={
+    ok: eyeY>=0.45 && eyeY<=0.78,
+    val: (eyeY*100).toFixed(0)+'%',
+    msg: `Eye line at ${(eyeY*100).toFixed(0)}% from top (ideal 55–70%)`
+  };
+
+  // CENTERING: face horizontal center should be within ±15% of image center
+  const faceCenterX=(box.x+box.w/2)/w;
+  const centerError=Math.abs(faceCenterX-0.5);
+  results.center={
+    ok: centerError<=0.15,
+    val: (faceCenterX*100).toFixed(0)+'%',
+    msg: `Face centered at ${(faceCenterX*100).toFixed(0)}% (ideal 50%, offset ${(centerError*100).toFixed(0)}%)`
+  };
+
+  // TILT: face box aspect ratio
+  const aspect=box.w/box.h;
+  // Real faces typically 0.65–0.90 width/height ratio
+  results.tilt={
+    ok: aspect>=0.55 && aspect<=1.05,
+    val: aspect.toFixed(2),
+    msg: `Face aspect ratio ${aspect.toFixed(2)} (ideal 0.65–0.90)`
+  };
+
+  // BACKGROUND: sample corner pixels, check uniformity
+  const bgResult=checkBackground(img);
+  results.bg={
+    ok: bgResult.ok,
+    val: bgResult.ok?'Uniform':'Variable',
+    msg: `Background ${bgResult.ok?'uniform ✓':'may not be uniform (variance: '+bgResult.variance+')'}`
+  };
+
+  // BRIGHTNESS: measure face region specifically, not whole image
+  const faceRegionLum=measureFaceRegionLum(img, box);
+  // Passport photos should be well-lit: 120–220 average luminance
+  results.bright={
+    ok: faceRegionLum>=100 && faceRegionLum<=230,
+    val: faceRegionLum.toFixed(0),
+    msg: `Face region luminance ${faceRegionLum.toFixed(0)} (ideal 120–220)`
+  };
+
+  return results;
+}
+
+function checkBackground(img){
+  const c=document.createElement('canvas');
+  const scale=Math.min(100/(img.naturalWidth||img.width),1);
+  c.width=Math.round((img.naturalWidth||img.width)*scale);
+  c.height=Math.round((img.naturalHeight||img.height)*scale);
+  const ctx=c.getContext('2d');
+  ctx.drawImage(img,0,0,c.width,c.height);
+  const d=ctx.getImageData(0,0,c.width,c.height).data;
+  // Sample corners (10% border)
+  const samples=[];
+  const bw=Math.round(c.width*0.08), bh=Math.round(c.height*0.08);
+  const corners=[
+    {x:0,y:0,w:bw,h:bh},{x:c.width-bw,y:0,w:bw,h:bh},
+    {x:0,y:c.height-bh,w:bw,h:bh},{x:c.width-bw,y:c.height-bh,w:bw,h:bh}
+  ];
+  for(const corner of corners){
+    for(let y=corner.y;y<corner.y+corner.h;y++){
+      for(let x=corner.x;x<corner.x+corner.w;x++){
+        const i=(y*c.width+x)*4;
+        samples.push(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+      }
+    }
+  }
+  const mean=samples.reduce((a,b)=>a+b,0)/samples.length;
+  const variance=samples.reduce((a,b)=>a+(b-mean)**2,0)/samples.length;
+  // Low variance = uniform background; high = busy
+  return {ok: variance<800 && mean>160, variance:Math.round(variance), mean:Math.round(mean)};
+}
+
+function measureFaceRegionLum(img, box){
+  const c=document.createElement('canvas');
+  const iw=img.naturalWidth||img.width;
+  const ih=img.naturalHeight||img.height;
+  const scale=Math.min(80/box.w,80/box.h,1);
+  const sw=Math.round(box.w*scale), sh=Math.round(box.h*scale);
+  if(sw<=0||sh<=0) return 150; // fallback
+  c.width=sw;c.height=sh;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, sw, sh);
+  const d=ctx.getImageData(0,0,sw,sh).data;
+  let sum=0;
+  for(let i=0;i<d.length;i+=4) sum+=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+  return sum/(d.length/4);
+}
+
+function updateICAOBadges(icao){
+  const map={headSize:'icao-head-size',eyePos:'icao-eye-pos',center:'icao-center',tilt:'icao-tilt',bg:'icao-bg',bright:'icao-bright'};
+  const labels={headSize:'Head Size',eyePos:'Eye Pos',center:'Centering',tilt:'Tilt',bg:'BG',bright:'Brightness'};
+  Object.entries(map).forEach(([k,id])=>{
+    const el=document.getElementById(id);if(!icao[k])return;
+    el.className='icao-badge '+(icao[k].ok?'pass':'fail');
+    el.textContent=labels[k]+': '+(icao[k].ok?'✓':'✗');
+  });
+}
+
+function resetICAOBadges(){
+  const ids={headSize:'Head Size',eyePos:'Eye Pos',center:'Centering',tilt:'Tilt',bg:'Background',bright:'Brightness'};
+  Object.entries(ids).forEach(([k,label])=>{
+    const el=document.getElementById('icao-'+k.replace(/[A-Z]/g,m=>'-'+m.toLowerCase()));
+    if(el){el.className='icao-badge pending';el.textContent=label;}
+  });
+  document.getElementById('icao-head-size').textContent='Head Size';
+  document.getElementById('icao-eye-pos').textContent='Eye Pos';
+  document.getElementById('icao-center').textContent='Centering';
+  document.getElementById('icao-tilt').textContent='Tilt';
+  document.getElementById('icao-bg').textContent='Background';
+  document.getElementById('icao-bright').textContent='Brightness';
+  document.getElementById('face-conf-label').textContent='';
+}
+
+function updateICAODetails(icao){
+  const labels={headSize:'Head Size',eyePos:'Eye Position',center:'Centering',tilt:'Head Tilt',bg:'Background',bright:'Brightness'};
+  let html='';
+  Object.entries(icao).forEach(([k,v])=>{
+    html+=`<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);">
+      <span style="color:${v.ok?'var(--success)':'var(--danger)'};flex-shrink:0;">${v.ok?'✓':'✗'}</span>
+      <div style="flex:1"><div>${labels[k]||k}</div><div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;margin-top:2px;">${v.msg}</div></div>
+    </div>`;
+  });
+  document.getElementById('icao-details').innerHTML=html||'Run analysis first.';
+}
+
+// ═══════════════════════════════════════════
+// CANVAS RENDERING
+// ═══════════════════════════════════════════
+function renderOriginalToMain(img){
+  const canvas=document.getElementById('main-canvas');
+  const area=document.getElementById('canvas-area');
+  const maxW=area.clientWidth-40, maxH=area.clientHeight-60;
+  const iw=img.naturalWidth||img.width;
+  const ih=img.naturalHeight||img.height;
+  let w=iw,h=ih;
+  const sc=Math.min(maxW/w,maxH/h,1);
+  w=Math.round(w*sc*state.zoom);h=Math.round(h*sc*state.zoom);
+  canvas.width=w;canvas.height=h;
+  const gc=document.getElementById('guide-canvas');
+  gc.width=w;gc.height=h;
+  const grc=document.getElementById('grid-canvas');
+  grc.width=w;grc.height=h;
+  const ctx=canvas.getContext('2d');
+  ctx.save();
+  ctx.translate(w/2,h/2);
+  ctx.rotate(state.rotation*Math.PI/180);
+  if(state.flipped) ctx.scale(-1,1);
+  ctx.drawImage(img,-w/2,-h/2,w,h);
+  ctx.restore();
+  applyCanvasEnhancements(ctx,canvas,w,h);
+  drawGuides();
+  drawGrid();
+  drawFaceOverlay();
+}
+
+function renderProcessedToMain(src){
+  const canvas=document.getElementById('main-canvas');
+  const area=document.getElementById('canvas-area');
+  const maxW=area.clientWidth-40, maxH=area.clientHeight-60;
+  const sw=src.width||src.naturalWidth;
+  const sh=src.height||src.naturalHeight;
+  let w=sw,h=sh;
+  const sc=Math.min(maxW/w,maxH/h,1);
+  w=Math.round(w*sc*state.zoom);h=Math.round(h*sc*state.zoom);
+  canvas.width=w;canvas.height=h;
+  const gc=document.getElementById('guide-canvas');
+  gc.width=w;gc.height=h;
+  canvas.getContext('2d').drawImage(src,0,0,w,h);
+  drawGuides();
+  drawGrid();
+}
+
+function applyCanvasEnhancements(ctx,canvas,w,h){
+  const e=state.enhancements;
+  if(e.brightness===0&&e.contrast===0&&e.saturation===0) return;
+  const imgData=ctx.getImageData(0,0,w,h);
+  const d=imgData.data;
+  const bright=e.brightness*2.55;
+  const contF=e.contrast>0?(259*(e.contrast*2.55+255))/(255*(259-e.contrast*2.55)):1+(e.contrast/100);
+  for(let i=0;i<d.length;i+=4){
+    let r=d[i],g=d[i+1],b=d[i+2];
+    r=clamp(r+bright);g=clamp(g+bright);b=clamp(b+bright);
+    r=clamp(contF*(r-128)+128);g=clamp(contF*(g-128)+128);b=clamp(contF*(b-128)+128);
+    if(e.saturation!==0){
+      const max=Math.max(r,g,b)/255,min=Math.min(r,g,b)/255;
+      const l=(max+min)/2;
+      const sat=(e.saturation/100)*0.6;
+      [r,g,b]=[r,g,b].map(cv=>{
+        let nc=cv/255;nc=l+((nc-l)*(1+sat));return clamp(nc*255);
+      });
+    }
+    d[i]=r;d[i+1]=g;d[i+2]=b;
+  }
+  ctx.putImageData(imgData,0,0);
+  if(e.sharpness>0) applySharpen(ctx,w,h,e.sharpness/100);
+}
+
+function applySharpen(ctx,w,h,amount){
+  const imgData=ctx.getImageData(0,0,w,h);
+  const src=new Uint8ClampedArray(imgData.data);
+  const d=imgData.data;
+  const k=amount*0.45;
+  const kernel=[-k,-k,-k,-k,1+8*k,-k,-k,-k,-k];
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      for(let c=0;c<3;c++){
+        let sum=0;
+        for(let ky=-1;ky<=1;ky++){
+          for(let kx=-1;kx<=1;kx++){
+            sum+=src[((y+ky)*w+(x+kx))*4+c]*kernel[(ky+1)*3+(kx+1)];
+          }
+        }
+        d[(y*w+x)*4+c]=clamp(sum);
+      }
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+}
+
+function drawGuides(){
+  const gc=document.getElementById('guide-canvas');
+  const ctx=gc.getContext('2d');
+  ctx.clearRect(0,0,gc.width,gc.height);
+  if(!state.showGuides) return;
+  const w=gc.width,h=gc.height;
+  ctx.save();
+  // Face oval
+  ctx.strokeStyle='rgba(79,142,247,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.ellipse(w/2,h*0.42,w*0.21,h*0.28,0,0,Math.PI*2);ctx.stroke();
+  // Center cross
+  ctx.strokeStyle='rgba(79,142,247,0.25)';ctx.setLineDash([3,5]);
+  ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,h*0.42);ctx.lineTo(w,h*0.42);ctx.stroke();
+  // Eye line
+  ctx.strokeStyle='rgba(61,214,140,0.4)';ctx.setLineDash([8,5]);
+  ctx.beginPath();ctx.moveTo(0,h*0.36);ctx.lineTo(w,h*0.36);ctx.stroke();
+  // Head zone guides
+  ctx.strokeStyle='rgba(245,166,35,0.3)';ctx.setLineDash([4,6]);
+  ctx.beginPath();ctx.moveTo(0,h*0.10);ctx.lineTo(w,h*0.10);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,h*0.78);ctx.lineTo(w,h*0.78);ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════
+// GRID OVERLAY
+// ═══════════════════════════════════════════
+function toggleGrid(){
+  state.showGrid = !state.showGrid;
+  document.getElementById('btn-grid').classList.toggle('active', state.showGrid);
+  drawGrid();
+}
+function drawGrid(){
+  const gc = document.getElementById('grid-canvas');
+  gc.width = document.getElementById('main-canvas').width;
+  gc.height = document.getElementById('main-canvas').height;
+  const ctx = gc.getContext('2d');
+  ctx.clearRect(0,0,gc.width,gc.height);
+  if(!state.showGrid) return;
+  const w=gc.width, h=gc.height;
+  const cols=10, rows=10;
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,0.18)';
+  ctx.lineWidth=0.8;
+  ctx.setLineDash([]);
+  for(let i=1;i<cols;i++){
+    const x=Math.round(w*i/cols);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+  }
+  for(let j=1;j<rows;j++){
+    const y=Math.round(h*j/rows);
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+  }
+  // Thicker rule-of-thirds lines
+  ctx.strokeStyle='rgba(79,142,247,0.35)';
+  ctx.lineWidth=1.2;
+  [1,2].forEach(i=>{
+    const x=Math.round(w*i/3);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+    const y=Math.round(h*i/3);
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════
+// CROP SYSTEM
+// ═══════════════════════════════════════════
+const cropState = {
+  active: false,
+  ratio: 'free',      // 'free' | 'W:H' string
+  ratioW: 0, ratioH: 0,
+  // Frame position in canvas-wrap pixels
+  x:0, y:0, w:0, h:0,
+  // Drag state
+  dragMode: null,     // 'move' | 'nw'|'n'|'ne'|'e'|'se'|'s'|'sw'|'w'
+  dragStartX:0, dragStartY:0,
+  dragStartFrame:{},
+};
+
+function toggleCropMode(){
+  if(cropState.active) cancelCrop();
+  else startCrop();
+}
+
+function startCrop(){
+  if(state.currentIdx<0){notify('Chưa có ảnh để crop','error');return;}
+  cropState.active=true;
+  document.getElementById('btn-crop').classList.add('active');
+  const canvas=document.getElementById('main-canvas');
+  const wrap=document.getElementById('canvas-wrap');
+  const cw=canvas.offsetWidth, ch=canvas.offsetHeight;
+  // Init frame to 60% centered
+  cropState.w=Math.round(cw*0.6);
+  cropState.h=Math.round(ch*0.6);
+  cropState.x=Math.round((cw-cropState.w)/2);
+  cropState.y=Math.round((ch-cropState.h)/2);
+  // Apply current ratio if not free
+  if(cropState.ratio!=='free') applyRatioToFrame();
+
+  const overlay=document.getElementById('crop-overlay');
+  overlay.style.display='block';
+  // Size overlay to canvas
+  overlay.style.width=cw+'px';
+  overlay.style.height=ch+'px';
+
+  updateCropFrame();
+  buildCropGrid();
+  attachCropEvents();
+}
+
+function cancelCrop(){
+  cropState.active=false;
+  document.getElementById('btn-crop').classList.remove('active');
+  document.getElementById('crop-overlay').style.display='none';
+  detachCropEvents();
+}
+
+function setCropRatio(ratio){
+  // Update button states
+  document.querySelectorAll('.crop-ratio-btn').forEach(b=>b.classList.toggle('active', b.dataset.ratio===ratio));
+  cropState.ratio=ratio;
+  if(ratio==='free'){cropState.ratioW=0;cropState.ratioH=0;return;}
+  const parts=ratio.split(':');
+  if(parts.length===2){
+    const rw=parseFloat(parts[0]), rh=parseFloat(parts[1]);
+    if(rw>0&&rh>0){cropState.ratioW=rw;cropState.ratioH=rh;applyRatioToFrame();}
+  }
+}
+
+function applyRatioToFrame(){
+  if(!cropState.ratioW||!cropState.ratioH) return;
+  const canvas=document.getElementById('main-canvas');
+  const cw=canvas.offsetWidth, ch=canvas.offsetHeight;
+  // Keep width, adjust height
+  let nw=cropState.w;
+  let nh=Math.round(nw*cropState.ratioH/cropState.ratioW);
+  if(nh>ch-10){nh=ch-10;nw=Math.round(nh*cropState.ratioW/cropState.ratioH);}
+  if(nw>cw-10){nw=cw-10;nh=Math.round(nw*cropState.ratioH/cropState.ratioW);}
+  cropState.w=nw; cropState.h=nh;
+  // Clamp position
+  cropState.x=Math.max(0,Math.min(cw-nw,cropState.x));
+  cropState.y=Math.max(0,Math.min(ch-nh,cropState.y));
+  updateCropFrame();
+}
+
+function buildCropGrid(){
+  const gi=document.getElementById('crop-grid-inner');
+  gi.innerHTML='';
+  // Rule-of-thirds lines inside frame
+  const lines=['33.33%','66.66%'];
+  lines.forEach(p=>{
+    const lv=document.createElement('div');
+    lv.style.cssText=`position:absolute;top:0;bottom:0;left:${p};width:1px;background:rgba(255,255,255,0.25);`;
+    gi.appendChild(lv);
+    const lh=document.createElement('div');
+    lh.style.cssText=`position:absolute;left:0;right:0;top:${p};height:1px;background:rgba(255,255,255,0.25);`;
+    gi.appendChild(lh);
+  });
+}
+
+function updateCropFrame(){
+  const frame=document.getElementById('crop-frame');
+  const {x,y,w,h}=cropState;
+  frame.style.left=x+'px';
+  frame.style.top=y+'px';
+  frame.style.width=w+'px';
+  frame.style.height=h+'px';
+  // Update dim label
+  const canvas=document.getElementById('main-canvas');
+  const mc=document.getElementById('main-canvas');
+  const scaleX=(mc.width||1)/mc.offsetWidth;
+  const scaleY=(mc.height||1)/mc.offsetHeight;
+  const px=Math.round(w*scaleX), py=Math.round(h*scaleY);
+  frame.title=`${px}×${py}px`;
+}
+
+// ── Crop drag events ──
+function attachCropEvents(){
+  const frame=document.getElementById('crop-frame');
+  const overlay=document.getElementById('crop-overlay');
+  frame.addEventListener('mousedown', onCropFrameMouseDown);
+  document.querySelectorAll('.crop-handle').forEach(h=>{
+    h.addEventListener('mousedown', onCropHandleMouseDown);
+  });
+  document.addEventListener('mousemove', onCropMouseMove);
+  document.addEventListener('mouseup', onCropMouseUp);
+  // Touch
+  frame.addEventListener('touchstart', onCropFrameTouchStart, {passive:false});
+  document.querySelectorAll('.crop-handle').forEach(h=>{
+    h.addEventListener('touchstart', onCropHandleTouchStart, {passive:false});
+  });
+  document.addEventListener('touchmove', onCropTouchMove, {passive:false});
+  document.addEventListener('touchend', onCropMouseUp);
+}
+function detachCropEvents(){
+  const frame=document.getElementById('crop-frame');
+  if(frame){
+    frame.removeEventListener('mousedown',onCropFrameMouseDown);
+    frame.removeEventListener('touchstart',onCropFrameTouchStart);
+  }
+  document.removeEventListener('mousemove',onCropMouseMove);
+  document.removeEventListener('mouseup',onCropMouseUp);
+  document.removeEventListener('touchmove',onCropTouchMove);
+  document.removeEventListener('touchend',onCropMouseUp);
+}
+
+function getOverlayPos(clientX,clientY){
+  const overlay=document.getElementById('crop-overlay');
+  const r=overlay.getBoundingClientRect();
+  return {x:clientX-r.left, y:clientY-r.top};
+}
+
+function onCropFrameMouseDown(e){
+  if(e.target.classList.contains('crop-handle')) return;
+  e.preventDefault(); e.stopPropagation();
+  const pos=getOverlayPos(e.clientX,e.clientY);
+  cropState.dragMode='move';
+  cropState.dragStartX=pos.x; cropState.dragStartY=pos.y;
+  cropState.dragStartFrame={...cropState};
+}
+function onCropFrameTouchStart(e){
+  if(e.target.classList.contains('crop-handle')) return;
+  e.preventDefault();
+  const t=e.touches[0];
+  onCropFrameMouseDown({...e, clientX:t.clientX, clientY:t.clientY, preventDefault:()=>{}, stopPropagation:()=>{}});
+}
+function onCropHandleMouseDown(e){
+  e.preventDefault(); e.stopPropagation();
+  const pos=getOverlayPos(e.clientX,e.clientY);
+  cropState.dragMode=e.currentTarget.dataset.dir;
+  cropState.dragStartX=pos.x; cropState.dragStartY=pos.y;
+  cropState.dragStartFrame={...cropState};
+}
+function onCropHandleTouchStart(e){
+  e.preventDefault();
+  const t=e.touches[0];
+  const pos=getOverlayPos(t.clientX,t.clientY);
+  cropState.dragMode=e.currentTarget.dataset.dir;
+  cropState.dragStartX=pos.x; cropState.dragStartY=pos.y;
+  cropState.dragStartFrame={...cropState};
+}
+
+function onCropTouchMove(e){
+  e.preventDefault();
+  const t=e.touches[0];
+  onCropMouseMove({clientX:t.clientX,clientY:t.clientY});
+}
+
+function onCropMouseMove(e){
+  if(!cropState.dragMode) return;
+  const pos=getOverlayPos(e.clientX,e.clientY);
+  const dx=pos.x-cropState.dragStartX;
+  const dy=pos.y-cropState.dragStartY;
+  const sf=cropState.dragStartFrame;
+  const canvas=document.getElementById('main-canvas');
+  const maxW=canvas.offsetWidth, maxH=canvas.offsetHeight;
+  const MIN=30;
+
+  let {x,y,w,h}=sf;
+  const mode=cropState.dragMode;
+
+  if(mode==='move'){
+    x=Math.max(0,Math.min(maxW-w, sf.x+dx));
+    y=Math.max(0,Math.min(maxH-h, sf.y+dy));
+  } else {
+    // Resize with handle
+    let nx=x,ny=y,nw=w,nh=h;
+    if(mode.includes('e')) nw=Math.max(MIN, sf.w+dx);
+    if(mode.includes('s')) nh=Math.max(MIN, sf.h+dy);
+    if(mode.includes('w')){ nw=Math.max(MIN, sf.w-dx); nx=sf.x+sf.w-nw; }
+    if(mode.includes('n')){ nh=Math.max(MIN, sf.h-dy); ny=sf.y+sf.h-nh; }
+
+    // Enforce aspect ratio
+    if(cropState.ratioW && cropState.ratioH){
+      const ar=cropState.ratioW/cropState.ratioH;
+      if(mode==='n'||mode==='s'){
+        nw=Math.round(nh*ar);
+        if(mode.includes('n')) nx=sf.x+sf.w/2-nw/2;
+      } else if(mode==='e'||mode==='w'){
+        nh=Math.round(nw/ar);
+        if(mode.includes('n')) ny=sf.y+sf.h-nh;
+      } else {
+        // Corner: use whichever axis changed more
+        const byW=Math.round(nw/ar);
+        const byH=Math.round(nh*ar);
+        if(Math.abs(dx)>=Math.abs(dy)){nh=byW;}
+        else{nw=byH;}
+        if(mode.includes('n')) ny=sf.y+sf.h-nh;
+        if(mode.includes('w')) nx=sf.x+sf.w-nw;
+      }
+    }
+
+    // Clamp to canvas bounds
+    if(nx<0){nw+=nx;nx=0;}
+    if(ny<0){nh+=ny;ny=0;}
+    if(nx+nw>maxW) nw=maxW-nx;
+    if(ny+nh>maxH) nh=maxH-ny;
+    if(nw<MIN) nw=MIN;
+    if(nh<MIN) nh=MIN;
+    x=nx;y=ny;w=nw;h=nh;
+  }
+
+  cropState.x=x; cropState.y=y; cropState.w=w; cropState.h=h;
+  updateCropFrame();
+}
+function onCropMouseUp(){
+  cropState.dragMode=null;
+}
+
+async function applyCrop(){
+  if(state.currentIdx<0) return;
+  const photo=state.photos[state.currentIdx];
+  if(!photo.origImg){notify('Không có ảnh gốc','error');return;}
+
+  const displayCanvas=document.getElementById('main-canvas');
+  const scaleX=(displayCanvas.width||1)/displayCanvas.offsetWidth;
+  const scaleY=(displayCanvas.height||1)/displayCanvas.offsetHeight;
+
+  // Crop coords in actual canvas pixel space
+  const cx=Math.round(cropState.x*scaleX);
+  const cy=Math.round(cropState.y*scaleY);
+  const cw=Math.round(cropState.w*scaleX);
+  const ch=Math.round(cropState.h*scaleY);
+
+  // Draw cropped region into new canvas
+  const out=document.createElement('canvas');
+  out.width=cw; out.height=ch;
+  const ctx=out.getContext('2d');
+
+  // Source can be processedCanvas or origImg rendered with rotation/flip
+  const srcCanvas=document.createElement('canvas');
+  srcCanvas.width=displayCanvas.width;
+  srcCanvas.height=displayCanvas.height;
+  const sctx=srcCanvas.getContext('2d');
+  const src=photo.processedCanvas||photo.origImg;
+  const sw=src.width||src.naturalWidth, sh=src.height||src.naturalHeight;
+  sctx.save();
+  sctx.translate(srcCanvas.width/2,srcCanvas.height/2);
+  sctx.rotate(state.rotation*Math.PI/180);
+  if(state.flipped) sctx.scale(-1,1);
+  sctx.drawImage(src,-srcCanvas.width/2,-srcCanvas.height/2,srcCanvas.width,srcCanvas.height);
+  sctx.restore();
+
+  ctx.drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+
+  // Replace processedCanvas + reset rotation/flip
+  photo.processedCanvas=out;
+  // Reset rotation since it's baked in
+  state.rotation=0; state.flipped=false;
+  cancelCrop();
+
+  // Re-run analysis on cropped image
+  photo.icao={};
+  const croppedImg=new Image();
+  croppedImg.onload=async()=>{
+    photo.origImg=croppedImg;
+    photo.processedCanvas=null;
+    await autoAnalyze(photo);
+    updatePreview();
+    photo.processedCanvas=out;
+    renderProcessedToMain(out);
+    if(state.showGrid) drawGrid();
+    notify('Đã crop ảnh thành công ✓','success');
+  };
+  croppedImg.src=out.toDataURL();
+}
+
+function drawFaceOverlay(){
+  const overlay=document.getElementById('face-overlay');
+  overlay.innerHTML='';
+  const canvas=document.getElementById('main-canvas');
+  const fd=state.faceData;
+  if(!fd) return;
+  const scaleX=canvas.width/(fd.origW||canvas.width);
+  const scaleY=canvas.height/(fd.origH||canvas.height);
+  if(fd.box){
+    const box=document.createElement('div');
+    box.className='face-box';
+    box.style.cssText=`left:${fd.box.x*scaleX}px;top:${fd.box.y*scaleY}px;width:${fd.box.w*scaleX}px;height:${fd.box.h*scaleY}px;`;
+    const lbl=document.createElement('div');
+    lbl.className='face-box-label';
+    lbl.textContent=`Face ${fd.confidence||'?'}%`;
+    box.appendChild(lbl);
+    overlay.appendChild(box);
+  }
+  if(state.showLandmarks&&fd.landmarks){
+    fd.landmarks.forEach(pt=>{
+      const dot=document.createElement('div');
+      dot.className='landmark-dot '+(pt.type||'');
+      dot.style.cssText=`left:${pt.x*scaleX}px;top:${pt.y*scaleY}px;`;
+      overlay.appendChild(dot);
+    });
+  }
+}
+
+function updatePreview(){
+  if(state.currentIdx<0) return;
+  const photo=state.photos[state.currentIdx];
+  if(!photo||!photo.origImg) return;
+  if(photo.processedCanvas) renderProcessedToMain(photo.processedCanvas);
+  else renderOriginalToMain(photo.origImg);
+}
+
+// ═══════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════
+function handleDragOver(e){e.preventDefault();document.getElementById('upload-zone').classList.add('dragover');}
+function handleDragLeave(){document.getElementById('upload-zone').classList.remove('dragover');}
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+}
+function handleFiles(files){
+  const arr=Array.from(files).filter(f=>f.type.startsWith('image/'));
+  if(!arr.length){notify('No valid image files','error');return;}
+  if(state.photos.length+arr.length>1000){notify('Max 1000 photos','error');return;}
+  arr.forEach(f=>addPhoto(f));
+  notify(`Added ${arr.length} photo(s)`,'success');
+  updateBatchStats();
+}
+function addPhoto(file){
+  const id=Date.now()+'_'+Math.random().toString(36).slice(2);
+  const photo={id,file,name:file.name,origImg:null,processedCanvas:null,status:'loading',icao:{}};
+  state.photos.push(photo);
+  renderQueueItem(photo);
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      photo.origImg=img;photo.status='ready';
+      renderQueueItem(photo);
+      document.getElementById('qi-'+photo.id)?.querySelector('.queue-thumb')?.setAttribute('src',img.src);
+      if(state.currentIdx<0) selectPhoto(state.photos.length-1);
+      updatePhotoSelectors();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  updateBatchStats();
+  document.getElementById('queue-count').textContent=`Queue: ${state.photos.length} photo(s)`;
+}
+function renderQueueItem(photo){
+  const existing=document.getElementById('qi-'+photo.id);
+  if(existing){
+    existing.querySelector('.queue-status').textContent=photo.status;
+    existing.querySelector('.queue-status').className='queue-status '+photo.status;
+    return;
+  }
+  const div=document.createElement('div');
+  div.className='queue-item';div.id='qi-'+photo.id;
+  div.innerHTML=`<img class="queue-thumb" src="" alt=""><div class="queue-info"><div class="queue-name">${photo.name}</div><div class="queue-status ${photo.status}">${photo.status}</div></div><span class="queue-remove" onclick="removePhoto('${photo.id}',event)">✕</span>`;
+  div.addEventListener('click',()=>{
+    const idx=state.photos.findIndex(p=>p.id===photo.id);
+    if(idx>=0) selectPhoto(idx);
+  });
+  document.getElementById('photo-queue').appendChild(div);
+}
+function removePhoto(id,e){
+  e.stopPropagation();
+  const idx=state.photos.findIndex(p=>p.id==id);
+  if(idx<0) return;
+  state.photos.splice(idx,1);
+  document.getElementById('qi-'+id)?.remove();
+  document.getElementById('queue-count').textContent=`Queue: ${state.photos.length} photo(s)`;
+  if(state.currentIdx>=state.photos.length) state.currentIdx=state.photos.length-1;
+  if(state.currentIdx>=0) selectPhoto(state.currentIdx);
+  else clearCanvas();
+  updateBatchStats();updatePhotoSelectors();
+}
+function selectPhoto(idx){
+  state.currentIdx=idx;
+  state.rotation=0;state.flipped=false;state.faceData=null;
+  document.querySelectorAll('.queue-item').forEach(el=>el.classList.remove('active'));
+  const photo=state.photos[idx];
+  document.getElementById('qi-'+photo.id)?.classList.add('active');
+  if(photo.processedCanvas) renderProcessedToMain(photo.processedCanvas);
+  else if(photo.origImg) renderOriginalToMain(photo.origImg);
+  if(state.currentTab==='photo'){
+    document.getElementById('placeholder').style.display='none';
+    document.getElementById('canvas-wrap').style.display='flex';
+  }
+  resetICAOBadges();
+  if(photo.origImg) autoAnalyze(photo);
+}
+function clearCanvas(){
+  state.currentIdx=-1;
+  document.getElementById('canvas-wrap').style.display='none';
+  document.getElementById('placeholder').style.display='block';
+  resetICAOBadges();
+}
+function clearAll(){
+  state.photos=[];state.currentIdx=-1;
+  document.getElementById('photo-queue').innerHTML='';
+  document.getElementById('queue-count').textContent='Queue: 0 photos';
+  clearCanvas();updateBatchStats();updatePhotoSelectors();
+  log('All photos cleared');
+}
+
+// ═══════════════════════════════════════════
+// BACKGROUND REMOVAL (improved multi-pass)
+// ═══════════════════════════════════════════
+async function removeBackground(img){
+  const c=document.createElement('canvas');
+  c.width=img.naturalWidth||img.width;
+  c.height=img.naturalHeight||img.height;
+  const W=c.width, H=c.height;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(img,0,0);
+  const imgData=ctx.getImageData(0,0,W,H);
+  const d=imgData.data;
+
+  // Sample background from border edges (more robust than just corners)
+  const feather=parseInt(document.getElementById('bg-feather').value)||5;
+  const sampleZone=Math.max(4, Math.round(Math.min(W,H)*0.07));
+  const bgSamples=[];
+
+  // Top/bottom edge rows
+  for(let x=0;x<W;x++){
+    for(let row=0;row<sampleZone;row++){
+      const i=(row*W+x)*4;
+      bgSamples.push([d[i],d[i+1],d[i+2]]);
+      const i2=((H-1-row)*W+x)*4;
+      bgSamples.push([d[i2],d[i2+1],d[i2+2]]);
+    }
+  }
+  // Left/right edge columns (avoid double-counting corners)
+  for(let y=sampleZone;y<H-sampleZone;y++){
+    for(let col=0;col<sampleZone;col++){
+      const i=(y*W+col)*4;
+      bgSamples.push([d[i],d[i+1],d[i+2]]);
+      const i2=(y*W+(W-1-col))*4;
+      bgSamples.push([d[i2],d[i2+1],d[i2+2]]);
+    }
+  }
+
+  // Compute median background color (more robust than mean)
+  const rs=bgSamples.map(s=>s[0]).sort((a,b)=>a-b);
+  const gs=bgSamples.map(s=>s[1]).sort((a,b)=>a-b);
+  const bs=bgSamples.map(s=>s[2]).sort((a,b)=>a-b);
+  const mid=Math.floor(bgSamples.length/2);
+  const bgR=rs[mid], bgG=gs[mid], bgB=bs[mid];
+
+  const baseThresh = 30 + feather*3.5;
+
+  // Pass 1: Color distance-based removal
+  const alphaMap = new Float32Array(W*H);
+  for(let i=0;i<W*H;i++){
+    const pi=i*4;
+    const r=d[pi], g=d[pi+1], b=d[pi+2];
+    const dist=Math.sqrt((r-bgR)**2+(g-bgG)**2+(b-bgB)**2);
+    if(dist < baseThresh){
+      alphaMap[i] = dist / baseThresh; // 0=bg, 1=fg
+    } else {
+      alphaMap[i] = 1.0;
+    }
+  }
+
+  // Pass 2: Morphological erosion on alpha to remove stray pixels near edges
+  const eroded = new Float32Array(W*H);
+  for(let y=1;y<H-1;y++){
+    for(let x=1;x<W-1;x++){
+      const i=y*W+x;
+      // Minimum of 3x3 neighborhood (erosion keeps only definite foreground)
+      let mn=alphaMap[i];
+      mn=Math.min(mn,alphaMap[i-1],alphaMap[i+1],alphaMap[i-W],alphaMap[i+W]);
+      eroded[i]=mn;
+    }
+  }
+
+  // Pass 3: Edge feathering — dilate back slightly and smooth transition
+  for(let i=0;i<W*H;i++){
+    const a = Math.max(alphaMap[i]*0.6 + eroded[i]*0.4, 0);
+    d[i*4+3] = Math.round(clamp(a * 255));
+  }
+
+  ctx.putImageData(imgData,0,0);
+  return c;
+}
+
+// ═══════════════════════════════════════════
+// PROCESS PHOTO
+// ═══════════════════════════════════════════
+async function processCurrentPhoto(){
+  if(state.currentIdx<0){notify('No photo selected','error');return;}
+  const photo=state.photos[state.currentIdx];
+  if(!photo||!photo.origImg){notify('Photo not loaded','error');return;}
+  await processSinglePhoto(photo);
+  if(photo.processedCanvas) renderProcessedToMain(photo.processedCanvas);
+  updatePhotoSelectors();
+}
+
+async function processSinglePhoto(photo){
+  photo.status='processing';renderQueueItem(photo);
+  setProcessingStatus(true,'Processing');
+  log(`Processing: ${photo.name}`);
+  showAIOverlay('Detecting face (advanced)...');
+  await sleep(60);
+
+  const fd=await detectFaceAdvanced(photo.origImg);
+  state.faceData=fd;
+  log(`Face detected: ${fd.confidence}% confidence`,'ok');
+
+  const dpi=parseInt(document.getElementById('dpi-select').value)||300;
+  const pw=Math.round(state.photoSizeMm.w*dpi/25.4);
+  const ph=Math.round(state.photoSizeMm.h*dpi/25.4);
+  const out=document.createElement('canvas');
+  out.width=pw;out.height=ph;
+  const ctx=out.getContext('2d');
+
+  // Background
+  showAIOverlay('Applying background...');
+  await sleep(50);
+  if(state.bgImage){ctx.drawImage(state.bgImage,0,0,pw,ph);}
+  else{ctx.fillStyle=state.bgColor;ctx.fillRect(0,0,pw,ph);}
+
+  // Segmentation
+  showAIOverlay('Removing background...');
+  await sleep(60);
+  const seg=await removeBackground(photo.origImg);
+
+  // ICAO-compliant placement
+  // Head should be 70% of photo height; eye at 60% from top
+  const targetHeadH=ph*0.70;
+  const sc=targetHeadH/fd.box.h;
+  const sw=(photo.origImg.naturalWidth||photo.origImg.width)*sc;
+  const sh=(photo.origImg.naturalHeight||photo.origImg.height)*sc;
+  const eyeYInScaled=(fd.box.y+fd.box.h*0.36)*sc;
+  const targetEyeY=ph*0.58;
+  const faceCenterXScaled=(fd.box.x+fd.box.w/2)*sc;
+  const dx=pw/2-faceCenterXScaled;
+  const dy=targetEyeY-eyeYInScaled;
+
+  ctx.drawImage(seg,dx,dy,sw,sh);
+
+  showAIOverlay('Enhancing portrait...');
+  await sleep(50);
+  applyCanvasEnhancements(ctx,out,pw,ph);
+  applyEyeBrightening(ctx,pw,ph,fd,sc,dx,dy);
+
+  photo.processedCanvas=out;
+  photo.status='done';
+  renderQueueItem(photo);
+
+  // Update faceData to processed canvas coordinates
+  state.faceData={
+    ...fd,
+    origW:pw,origH:ph,
+    box:{x:dx+fd.box.x*sc,y:dy+fd.box.y*sc,w:fd.box.w*sc,h:fd.box.h*sc},
+    landmarks:fd.landmarks.map(pt=>({...pt,x:dx+pt.x*sc,y:dy+pt.y*sc})),
+  };
+
+  const icao=validateICAO(out,state.faceData);
+  photo.icao=icao;
+  if(state.photos[state.currentIdx]?.id===photo.id){
+    updateICAOBadges(icao);updateICAODetails(icao);
+  }
+
+  hideAIOverlay();
+  setProcessingStatus(false);
+  log(`Done: ${photo.name}`,'ok');
+  notify(`Processed: ${photo.name}`,'success');
+  return photo;
+}
+
+function applyEyeBrightening(ctx,w,h,fd,scale,dx,dy){
+  const amount=state.enhancements.eye/100;
+  if(amount<=0||!fd.landmarks) return;
+  const eyes=fd.landmarks.filter(l=>l.type==='eye');
+  eyes.forEach(pt=>{
+    const ex=dx+pt.x*scale, ey=dy+pt.y*scale;
+    const r=fd.box.w*scale*0.06;
+    const ix=Math.round(ex-r),iy=Math.round(ey-r);
+    const ew=Math.round(r*2),eh=Math.round(r*2);
+    if(ix<0||iy<0||ix+ew>w||iy+eh>h) return;
+    const imgData=ctx.getImageData(ix,iy,ew,eh);
+    const d=imgData.data;
+    for(let i=0;i<d.length;i+=4){
+      d[i]=clamp(d[i]*(1+amount*0.35));
+      d[i+1]=clamp(d[i+1]*(1+amount*0.3));
+      d[i+2]=clamp(d[i+2]*(1+amount*0.2));
+    }
+    ctx.putImageData(imgData,ix,iy);
+  });
+}
+
+// ═══════════════════════════════════════════
+// AUTO CORRECT ICAO
+// ═══════════════════════════════════════════
+async function autoCorrectICAO(){
+  if(state.currentIdx<0){notify('No photo selected','error');return;}
+  const photo=state.photos[state.currentIdx];
+  if(!photo.origImg){notify('Photo not loaded','error');return;}
+  log('Running ICAO auto-correct...');
+  setProcessingStatus(true,'Auto-Correcting');
+  showAIOverlay('ICAO auto-correcting...');
+  await sleep(80);
+  const fd=await detectFaceAdvanced(photo.origImg);
+  const dpi=parseInt(document.getElementById('dpi-select').value)||300;
+  const pw=Math.round(state.photoSizeMm.w*dpi/25.4);
+  const ph=Math.round(state.photoSizeMm.h*dpi/25.4);
+  const out=document.createElement('canvas');
+  out.width=pw;out.height=ph;
+  const ctx=out.getContext('2d');
+  ctx.fillStyle=state.bgColor;ctx.fillRect(0,0,pw,ph);
+  const sc=ph*0.70/fd.box.h;
+  const sw=(photo.origImg.naturalWidth||photo.origImg.width)*sc;
+  const sh=(photo.origImg.naturalHeight||photo.origImg.height)*sc;
+  const eyeYS=(fd.box.y+fd.box.h*0.36)*sc;
+  const faceCXS=(fd.box.x+fd.box.w/2)*sc;
+  const dx=pw/2-faceCXS, dy=ph*0.58-eyeYS;
+  ctx.drawImage(photo.origImg,dx,dy,sw,sh);
+  applyCanvasEnhancements(ctx,out,pw,ph);
+  photo.processedCanvas=out;
+  photo.status='done';renderQueueItem(photo);
+  state.faceData={...fd,origW:pw,origH:ph,box:{x:dx+fd.box.x*sc,y:dy+fd.box.y*sc,w:fd.box.w*sc,h:fd.box.h*sc},landmarks:fd.landmarks.map(p=>({...p,x:dx+p.x*sc,y:dy+p.y*sc}))};
+  const icao=validateICAO(out,state.faceData);
+  photo.icao=icao;
+  updateICAOBadges(icao);updateICAODetails(icao);
+  renderProcessedToMain(out);
+  hideAIOverlay();setProcessingStatus(false);
+  notify('ICAO auto-correction applied','success');
+  log('ICAO correction done','ok');
+}
+
+// ═══════════════════════════════════════════
+// AI FEATURES
+// ═══════════════════════════════════════════
+async function applyAIClothing(){
+  if(!state.geminiKey){notify('Gemini API key required','error');return;}
+  if(state.currentIdx<0){notify('No photo selected','error');return;}
+  if(state.clothing==='none'){notify('Select a clothing style','info');return;}
+  const photo=state.photos[state.currentIdx];
+  if(!photo.origImg){notify('Photo not loaded','error');return;}
+  showAIOverlay('AI clothing analysis...');
+  const clothMap={formal_shirt:'professional white dress shirt',business_suit:'dark business suit',blazer:'smart navy blazer',uniform:'formal uniform',graduation:'academic graduation gown'};
+  try{
+    const b64=await imgToB64(photo.origImg);
+    const resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key='+state.geminiKey,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:`Describe exactly how to retouch this portrait to show the person wearing: ${clothMap[state.clothing]||state.clothing}. Preserve face identity completely.`},{inlineData:{mimeType:'image/jpeg',data:b64}}]}],generationConfig:{temperature:0.3,maxOutputTokens:200}})
+    });
+    const data=await resp.json();
+    if(data.error) throw new Error(data.error.message);
+    log('Gemini clothing: '+data.candidates?.[0]?.content?.parts?.[0]?.text?.slice(0,80),'ok');
+  }catch(e){log('Gemini: '+e.message,'warn');}
+  simulateClothing(photo);
+}
+function simulateClothing(photo){
+  const src=photo.processedCanvas||photo.origImg;
+  const c=document.createElement('canvas');
+  c.width=src.width||src.naturalWidth;c.height=src.height||src.naturalHeight;
+  const W=c.width, H=c.height;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(src,0,0,W,H);
+
+  // Parse target clothing color
+  const col=state.clothingColor||'#1a2240';
+  const hexToRgb=h=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g,b];};
+  const [tR,tG,tB]=hexToRgb(col);
+
+  // Template shapes with clothing type
+  const clothingShapes={
+    none: null,
+    formal_shirt:  {opacity:0.72, blend:'hue'},
+    business_suit: {opacity:0.78, blend:'hue'},
+    blazer:        {opacity:0.70, blend:'hue'},
+    uniform:       {opacity:0.80, blend:'hue'},
+    graduation:    {opacity:0.75, blend:'hue'},
+  };
+
+  const shape=clothingShapes[state.clothing];
+
+  // Get raw pixel data to do clothing color replacement
+  const imgData=ctx.getImageData(0,0,W,H);
+  const d=imgData.data;
+
+  // Clothing region: lower ~40% of image, ellipse centered at ~75% height, full width
+  const centerX=W/2, centerY=H*0.78;
+  const rx=W*0.45, ry=H*0.30;
+
+  // Detect non-skin pixels in the clothing region and recolor them
+  for(let y=Math.round(H*0.50);y<H;y++){
+    for(let x=0;x<W;x++){
+      // Ellipse check
+      const nx=(x-centerX)/rx, ny=(y-centerY)/ry;
+      if(nx*nx+ny*ny>1.0) continue;
+
+      const i=(y*W+x)*4;
+      const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];
+      if(a<30) continue; // transparent (bg removed)
+
+      // Skip skin-colored pixels (preserve face/neck/hands)
+      if(isSkinHSV(r,g,b)) continue;
+
+      // Blend: preserve luminance, change hue/saturation toward target color
+      const lum=(0.299*r + 0.587*g + 0.114*b)/255;
+      const tLum=(0.299*tR + 0.587*tG + 0.114*tB)/255;
+      const ratio = tLum>0 ? lum/tLum : 1;
+
+      const opacity = shape ? shape.opacity : 0.72;
+      // Distance from center of ellipse for soft falloff
+      const dist=Math.sqrt(nx*nx+ny*ny);
+      const falloff=Math.max(0, 1 - Math.pow(dist, 1.5));
+      const alpha=opacity*falloff;
+
+      d[i]  = clamp(r*(1-alpha) + tR*ratio*alpha);
+      d[i+1]= clamp(g*(1-alpha) + tG*ratio*alpha);
+      d[i+2]= clamp(b*(1-alpha) + tB*ratio*alpha);
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+
+  photo.processedCanvas=c;renderProcessedToMain(c);
+  hideAIOverlay();
+  updatePhotoSelectors();
+}
+async function applyAIEnhancement(){
+  if(!state.geminiKey){
+    const auto={smooth:65,blemish:40,brightness:5,contrast:8,saturation:-3,sharpness:45,eye:25};
+    Object.entries(auto).forEach(([k,v])=>{state.enhancements[k]=v;document.getElementById('sl-'+k).value=v;document.getElementById('val-'+k).textContent=v;});
+    updatePreview();notify('Applied auto enhancement preset','info');return;
+  }
+  if(state.currentIdx<0){notify('No photo selected','error');return;}
+  showAIOverlay('AI portrait analysis...');
+  try{
+    const photo=state.photos[state.currentIdx];
+    const b64=await imgToB64(photo.origImg);
+    const resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key='+state.geminiKey,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:'Analyze this passport portrait. Return ONLY a JSON object with keys: brightness,contrast,saturation,sharpness,smooth,eye (values 0-100, brightness/contrast/saturation can be negative). No markdown, no extra text.'},{inlineData:{mimeType:'image/jpeg',data:b64}}]}],generationConfig:{temperature:0.1,maxOutputTokens:100}})
+    });
+    const data=await resp.json();
+    if(data.error) throw new Error(data.error.message);
+    const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const match=txt.match(/\{[^}]+\}/);
+    if(match){
+      const rec=JSON.parse(match[0]);
+      Object.entries(rec).forEach(([k,v])=>{
+        if(state.enhancements.hasOwnProperty(k)){
+          state.enhancements[k]=parseInt(v)||0;
+          document.getElementById('sl-'+k).value=state.enhancements[k];
+          document.getElementById('val-'+k).textContent=state.enhancements[k];
+        }
+      });
+    }
+    updatePreview();hideAIOverlay();notify('AI enhancement applied','success');
+  }catch(e){
+    hideAIOverlay();log('Gemini error: '+e.message,'warn');
+    const auto={smooth:65,blemish:40,brightness:5,contrast:8,saturation:-3,sharpness:45,eye:25};
+    Object.entries(auto).forEach(([k,v])=>{state.enhancements[k]=v;document.getElementById('sl-'+k).value=v;document.getElementById('val-'+k).textContent=v;});
+    updatePreview();notify('Applied smart preset (Gemini unavailable)','info');
+  }
+}
+async function imgToB64(imgEl){
+  const c=document.createElement('canvas');
+  const w=Math.min(imgEl.naturalWidth||imgEl.width,800);
+  const h=Math.round((imgEl.naturalHeight||imgEl.height)*(w/(imgEl.naturalWidth||imgEl.width)));
+  c.width=w;c.height=h;c.getContext('2d').drawImage(imgEl,0,0,w,h);
+  return c.toDataURL('image/jpeg',0.85).split(',')[1];
+}
+
+// ═══════════════════════════════════════════
+// BATCH PROCESSING
+// ═══════════════════════════════════════════
+let batchAbort=false;
+async function startBatchProcess(){
+  if(!state.photos.length){notify('No photos in queue','error');return;}
+  if(state.processing){notify('Already processing','info');return;}
+  batchAbort=false;state.processing=true;
+  log(`Batch start: ${state.photos.length} photos`,'info');
+  notify(`Processing ${state.photos.length} photos...`,'info');
+  const t0=Date.now();
+  for(let i=0;i<state.photos.length;i++){
+    if(batchAbort) break;
+    const p=state.photos[i];
+    if(p.status==='done') continue;
+    try{await processSinglePhoto(p);}
+    catch(e){p.status='failed';renderQueueItem(p);log(`Failed: ${p.name}`);}
+    const done=state.photos.filter(x=>x.status==='done').length;
+    const pct=Math.round(done/state.photos.length*100);
+    document.getElementById('batch-progress').style.width=pct+'%';
+    const elap=(Date.now()-t0)/1000;
+    const eta=done>0?((elap/done)*(state.photos.length-done)).toFixed(0):'-';
+    document.getElementById('batch-eta').textContent=`${pct}% | ETA: ${eta}s`;
+    updateBatchStats();await sleep(30);
+  }
+  state.processing=false;setProcessingStatus(false);
+  updatePhotoSelectors();
+  notify(`Batch done: ${state.photos.filter(p=>p.status==='done').length}/${state.photos.length}`,'success',5000);
+}
+function stopBatch(){batchAbort=true;state.processing=false;setProcessingStatus(false);notify('Batch stopped','info');}
+function updateBatchStats(){
+  const t=state.photos.length;
+  document.getElementById('stat-total').textContent=t;
+  document.getElementById('stat-proc').textContent=state.photos.filter(p=>p.status==='processing').length;
+  document.getElementById('stat-done').textContent=state.photos.filter(p=>p.status==='done').length;
+  document.getElementById('stat-fail').textContent=state.photos.filter(p=>p.status==='failed').length;
+  if(t>0) document.getElementById('batch-progress').style.width=Math.round(state.photos.filter(p=>p.status==='done').length/t*100)+'%';
+}
+
+// ═══════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════
+async function exportSingle(){
+  if(state.currentIdx<0){notify('No photo selected','error');return;}
+  const photo=state.photos[state.currentIdx];
+  const fmt=document.getElementById('export-format').value;
+  const q=parseInt(document.getElementById('export-quality').value)/100;
+  if(fmt==='pdf'){await exportSinglePDF(photo);return;}
+  const src=photo.processedCanvas||await imgToCanvas(photo.origImg);
+  const ext=fmt==='image/png'?'png':'jpg';
+  const fname=photo.name.replace(/\.[^.]+$/,'')+`_passport.${ext}`;
+  downloadURL(src.toDataURL(fmt,q),fname);
+  notify('Downloaded: '+fname,'success');
+}
+async function exportSinglePDF(photo){
+  const {jsPDF}=window.jspdf;
+  const pw=state.photoSizeMm.w,ph=state.photoSizeMm.h;
+  const pdf=new jsPDF({unit:'mm',format:[pw,ph]});
+  const src=photo.processedCanvas||await imgToCanvas(photo.origImg);
+  pdf.addImage(src.toDataURL('image/jpeg',0.95),'JPEG',0,0,pw,ph);
+  pdf.save(photo.name.replace(/\.[^.]+$/,'')+`_passport.pdf`);
+}
+async function exportBatchZip(){
+  const done=state.photos.filter(p=>p.status==='done'||p.origImg);
+  if(!done.length){notify('No processed photos','error');return;}
+  notify(`Preparing ZIP: ${done.length} photos...`,'info');
+  const zip=new JSZip();
+  const fmt=document.getElementById('export-format').value==='image/png'?'image/png':'image/jpeg';
+  const ext=fmt==='image/png'?'png':'jpg';
+  const q=parseInt(document.getElementById('export-quality').value)/100;
+  for(const photo of done){
+    const c=photo.processedCanvas||await imgToCanvas(photo.origImg);
+    zip.file(photo.name.replace(/\.[^.]+$/,'')+`_passport.${ext}`,c.toDataURL(fmt,q).split(',')[1],{base64:true});
+  }
+  const blob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(blob);
+  downloadURL(url,'passport_photos_batch.zip');
+  URL.revokeObjectURL(url);
+  notify(`ZIP downloaded: ${done.length} photos`,'success');
+}
+async function exportMixedPrintPDF(){
+  const {jsPDF}=window.jspdf;
+  const paper=getEffectivePaper();
+  const dpi=parseInt(document.getElementById('dpi-select').value)||300;
+  const mmToPx=dpi/25.4;
+  const pW=Math.round(paper.w*mmToPx);
+  const pH=Math.round(paper.h*mmToPx);
+
+  // Use user-arranged rects if available, else fallback to bin-pack
+  let rects=printState.rects;
+  if(!rects||rects.length===0){
+    const marginMm=parseFloat(document.getElementById('print-margin').value)||4;
+    const gapMm=parseFloat(document.getElementById('print-gap').value)||3;
+    const items=getMixItems();
+    if(!items.length){notify('Cần chọn số lượng ảnh trước','error');return;}
+    const result=binPackMixed(paper,marginMm,gapMm,items);
+    rects=result.rects;
+  }
+  if(!rects.length){notify('Không có ảnh để xuất','error');return;}
+
+  notify('Đang tạo PDF độ phân giải cao...','info');
+
+  const printC=document.createElement('canvas');
+  printC.width=pW; printC.height=pH;
+  const ctx=printC.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,pW,pH);
+
+  for(const rect of rects){
+    const rx=Math.round(rect.x*mmToPx), ry=Math.round(rect.y*mmToPx);
+    const rw=Math.round(rect.w*mmToPx), rh=Math.round(rect.h*mmToPx);
+    const photoSrc=rect.photoSrcResolved||null;
+    if(photoSrc){
+      ctx.save(); ctx.beginPath(); ctx.rect(rx,ry,rw,rh); ctx.clip();
+      const srcW=photoSrc.naturalWidth||photoSrc.width;
+      const srcH=photoSrc.naturalHeight||photoSrc.height;
+      const sc=Math.max(rw/srcW,rh/srcH);
+      const dw=srcW*sc, dh=srcH*sc;
+      try{ctx.drawImage(photoSrc,rx+(rw-dw)/2,ry+(rh-dh)/2,dw,dh);}catch(e){}
+      ctx.restore();
+    }
+    // Cut marks
+    ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=1.2; ctx.setLineDash([6,6]);
+    ctx.strokeRect(rx+0.5,ry+0.5,rw-1,rh-1); ctx.setLineDash([]);
+    // Corner L-marks
+    const cm=Math.min(12,rw*0.08,rh*0.08);
+    ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.lineWidth=1;
+    drawCutMark(ctx,rx,ry,cm,'tl'); drawCutMark(ctx,rx+rw,ry,cm,'tr');
+    drawCutMark(ctx,rx,ry+rh,cm,'bl'); drawCutMark(ctx,rx+rw,ry+rh,cm,'br');
+  }
+
+  // jsPDF orientation based on actual paper dims
+  const pdfOrient = paper.w > paper.h ? 'landscape' : 'portrait';
+  const pdf=new jsPDF({unit:'mm', format:[paper.w,paper.h], orientation:pdfOrient});
+  pdf.addImage(printC.toDataURL('image/jpeg',0.97),'JPEG',0,0,paper.w,paper.h);
+  const orientLabel = pdfOrient==='landscape'?'ngang':'dung';
+  pdf.save(`in_anh_${state.paperSize}_${orientLabel}_${Date.now()}.pdf`);
+  notify('Xuất PDF thành công ✓','success');
+  log(`PDF xuất: ${rects.length} ảnh · ${state.paperSize} · ${pdfOrient}`,'ok');
+}
+
+function imgToCanvas(img){
+  const c=document.createElement('canvas');
+  c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;
+  c.getContext('2d').drawImage(img,0,0);return Promise.resolve(c);
+}
+function downloadURL(url,name){const a=document.createElement('a');a.href=url;a.download=name;a.click();}
+
+// ═══════════════════════════════════════════
+// ZOOM / ROTATION
+// ═══════════════════════════════════════════
+function zoomIn(){state.zoom=Math.min(state.zoom*1.25,5);updateZoomLabel();updatePreview();}
+function zoomOut(){state.zoom=Math.max(state.zoom/1.25,0.15);updateZoomLabel();updatePreview();}
+function resetZoom(){state.zoom=1;updateZoomLabel();updatePreview();}
+function updateZoomLabel(){document.getElementById('zoom-val').textContent=Math.round(state.zoom*100)+'%';}
+function rotateImage(deg){if(state.currentIdx<0)return;state.rotation=(state.rotation+deg+360)%360;updatePreview();}
+function flipImage(){if(state.currentIdx<0)return;state.flipped=!state.flipped;updatePreview();}
+
+// ═══════════════════════════════════════════
+// AI OVERLAY
+// ═══════════════════════════════════════════
+function showAIOverlay(msg='Processing...'){
+  document.getElementById('ai-overlay-msg').textContent=msg;
+  document.getElementById('ai-overlay').style.display='flex';
+}
+function hideAIOverlay(){document.getElementById('ai-overlay').style.display='none';}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+function init(){
+  document.getElementById('btn-guides').classList.add('active');
+  // Set default paper to 4R
+  state.paperSize='4R';
+  const p4R=document.getElementById('pbtn-4R');
+  if(p4R) p4R.classList.add('active');
+  updatePrintPreviewInfo();
+  document.getElementById('canvas-area').addEventListener('wheel',e=>{
+    e.preventDefault();if(e.deltaY<0)zoomIn();else zoomOut();
+  },{passive:false});
+  log('AI Passport Photo Studio v3.1 ready','ok');
+  log('Face detection: HSV+YCrCb+BlobAnalysis engine loaded','ok');
+  log('Print engine: Mixed layout bin-packing ready — 12 khổ giấy','ok');
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
