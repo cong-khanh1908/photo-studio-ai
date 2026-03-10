@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0c10">
-<title>AI Photo Studio – Commercial Edition</title>
+<title>AI Passport Photo Studio – Commercial Edition</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -259,19 +259,29 @@ select option{background:var(--bg-card);}
 #crop-frame::before,#crop-frame::after{content:'';position:absolute;inset:0;pointer-events:none;}
 
 /* ── MOBILE NAV BAR ── */
-#mobile-nav{display:none;height:56px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:center;justify-content:space-around;padding:0 8px;padding-bottom:var(--safe-bottom);z-index:150;}
-.mnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;border-radius:6px;border:none;background:transparent;color:var(--text-muted);font-size:9px;font-family:'Sora',sans-serif;cursor:pointer;touch-action:manipulation;min-height:48px;}
+#mobile-nav{display:none;height:60px;background:var(--bg-secondary);border-top:1px solid var(--border);flex-shrink:0;align-items:stretch;justify-content:space-around;padding:0;padding-bottom:var(--safe-bottom);z-index:150;position:relative;}
+.mnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;color:var(--text-muted);font-size:9px;font-family:'Sora',sans-serif;cursor:pointer;touch-action:manipulation;padding:8px 2px;position:relative;transition:color .15s;}
 .mnav-btn:active{background:var(--bg-hover);}
 .mnav-btn.active{color:var(--accent);}
-.mnav-btn .mnav-icon{font-size:18px;}
+.mnav-btn.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--accent);border-radius:2px 2px 0 0;}
+.mnav-btn .mnav-icon{font-size:20px;line-height:1;}
 
-/* ── BOTTOM SHEET (tablet/mobile side panels) ── */
-.sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;touch-action:none;}
-.sheet-overlay.open{display:block;}
-.bottom-sheet{position:fixed;bottom:0;left:0;right:0;max-height:85vh;background:var(--bg-panel);border-radius:16px 16px 0 0;border-top:1px solid var(--border);z-index:500;transform:translateY(100%);transition:transform .3s cubic-bezier(.22,.61,.36,1);overflow-y:auto;padding-bottom:var(--safe-bottom);}
-.bottom-sheet.open{transform:translateY(0);}
-.sheet-handle{width:36px;height:4px;background:var(--border-active);border-radius:2px;margin:10px auto 6px;}
-.sheet-title{padding:0 16px 10px;font-size:13px;font-weight:600;color:var(--text-primary);}
+/* ── DRAWERS ── */
+#drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;backdrop-filter:blur(2px);}
+#drawer-overlay.open{display:block;}
+.drawer{position:fixed;top:0;bottom:0;width:88vw;max-width:340px;background:var(--bg-panel);z-index:600;display:flex;flex-direction:column;transition:transform .28s cubic-bezier(.4,0,.2,1);will-change:transform;overflow:hidden;}
+.drawer-left{left:0;transform:translateX(-100%);border-right:1px solid var(--border);}
+.drawer-right{right:0;transform:translateX(100%);border-left:1px solid var(--border);}
+.drawer-left.open{transform:translateX(0);}
+.drawer-right.open{transform:translateX(0);}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;padding-top:calc(14px + var(--safe-left));}
+.drawer-title{font-size:14px;font-weight:600;color:var(--text-primary);}
+.drawer-close{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
+.drawer-close:active{background:var(--bg-hover);}
+.drawer-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:var(--safe-bottom);}
+
+/* ── BOTTOM-SHEET (legacy remove) ── */
+.sheet-overlay,.bottom-sheet{display:none!important;}
 
 /* ── TABLET (768-1023px) ── */
 @media (max-width:1023px){
@@ -286,40 +296,42 @@ select option{background:var(--bg-card);}
   :root{--header-h:48px;--toolbar-h:40px;--icao-h:32px;}
   html,body{font-size:12px;}
 
-  /* Hide side panels on mobile — use bottom sheets instead */
-  #left-panel,#right-panel{display:none;}
+  /* Side panels hidden — content served via drawers */
+  #left-panel,#right-panel{display:none!important;}
 
   /* Full-width center */
   #center-panel{width:100%;}
-  #app{flex-direction:column;height:calc(100vh - var(--header-h));}
 
-  /* Show mobile nav bar */
+  /* Show mobile nav bar at bottom */
   #mobile-nav{display:flex;}
+
+  /* #app doesn't need fixed height — nav bar is outside flex now */
+  #app{height:calc(100vh - var(--header-h) - 60px - var(--safe-bottom));}
 
   /* Compress header */
   .app-title{font-size:13px;}
   .app-sub{display:none;}
-  .btn-header{padding:5px 10px;font-size:10px;}
+  .btn-header{padding:5px 8px;font-size:10px;}
   .status-indicator{display:none;}
 
-  /* Toolbar scrollable */
-  #center-toolbar{gap:2px;padding:0 6px;}
+  /* Toolbar scrollable, no wrap */
+  #center-toolbar{padding:0 6px;gap:2px;}
   .tool-btn{width:36px;height:36px;}
+  .tab-btn{padding:5px 8px;}
 
-  /* Canvas area fills remaining space */
-  #canvas-area{flex:1;}
+  /* Canvas fills space */
+  #canvas-area{flex:1;min-height:0;}
 
-  /* ICAO badges - compact */
-  #icao-panel{height:30px;gap:4px;padding:0 8px;}
-  .icao-badge{font-size:9px;padding:2px 6px;}
+  /* Compact ICAO bar */
+  #icao-panel{padding:0 8px;gap:4px;}
+  .icao-badge{font-size:9px;padding:2px 5px;}
 
-  /* Notifications on mobile */
-  #notif{top:60px;right:8px;left:8px;}
-  .notif-item{max-width:100%;font-size:11px;}
+  /* Notifications full-width */
+  #notif{top:56px;right:8px;left:8px;}
+  .notif-item{max-width:100%;}
 
-  /* Crop toolbar scroll on mobile */
-  #crop-toolbar{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;gap:4px;padding:6px 10px;}
-  .crop-handle{width:16px;height:16px;}
+  /* Crop toolbar scrollable */
+  #crop-toolbar{overflow-x:auto;gap:4px;padding:6px 10px;bottom:-52px;}
 }
 
 /* ── SMALL MOBILE (≤480px) ── */
@@ -328,15 +340,17 @@ select option{background:var(--bg-card);}
   .app-title{font-size:12px;}
   .logo-badge{width:26px;height:26px;font-size:10px;}
   .btn-header{padding:4px 8px;}
+  #app{height:calc(100vh - var(--header-h) - 60px - var(--safe-bottom));}
 }
 
 /* ── LANDSCAPE MOBILE ── */
 @media (max-width:767px) and (orientation:landscape){
   :root{--header-h:40px;--toolbar-h:36px;}
-  #mobile-nav{height:44px;}
-  .mnav-btn{font-size:8px;min-height:40px;}
-  .mnav-btn .mnav-icon{font-size:16px;}
-  #canvas-area{flex:1;}
+  #mobile-nav{height:50px;}
+  .mnav-btn .mnav-icon{font-size:17px;}
+  #app{height:calc(100vh - var(--header-h) - 50px - var(--safe-bottom));}
+  /* Drawers take less width in landscape */
+  .drawer{max-width:300px;}
 }
 
 /* ── LARGE DESKTOP (≥1440px) ── */
@@ -364,10 +378,10 @@ select option{background:var(--bg-card);}
 
 <!-- HEADER -->
 <div id="header">
-  <div class="logo-badge">CK</div>
+  <div class="logo-badge">AP</div>
   <div>
-    <div class="app-title">AI Photo Studio</div>
-    <div class="app-sub">NguyenCongKhanh© · Commercial Edition v3.1 · Photo Print</div>
+    <div class="app-title">AI Passport Photo Studio</div>
+    <div class="app-sub">Commercial Edition v3.1 · Photo Print</div>
   </div>
   <div class="header-spacer"></div>
   <div class="status-indicator">
@@ -590,7 +604,7 @@ select option{background:var(--bg-card);}
     <div class="placeholder-msg" id="placeholder">
       <div class="big-icon">🪪</div>
       <p>No photo loaded</p>
-      <small>Upload a photo from the left panel to begin</small>
+      <small id="placeholder-hint">Upload a photo from the left panel to begin</small>
     </div>
     <div id="canvas-wrap" style="display:none;position:relative;">
       <canvas id="main-canvas"></canvas>
@@ -896,38 +910,46 @@ select option{background:var(--bg-card);}
 
 <!-- ═══════════════════ MOBILE NAV BAR ═══════════════════ -->
 <div id="mobile-nav">
-  <button class="mnav-btn active" id="mnav-upload" onclick="openSheet('sheet-left','mnav-upload')">
-    <span class="mnav-icon">📁</span>Ảnh
+  <button class="mnav-btn" id="mnav-upload" onclick="mobileDrawer('left','sec-upload')">
+    <span class="mnav-icon">📁</span><span>Ảnh</span>
   </button>
-  <button class="mnav-btn" id="mnav-edit" onclick="openSheet('sheet-left','mnav-edit');scrollSheetTo('sec-size')">
-    <span class="mnav-icon">📐</span>Kích thước
+  <button class="mnav-btn" id="mnav-size" onclick="mobileDrawer('left','sec-size')">
+    <span class="mnav-icon">📐</span><span>Kích thước</span>
   </button>
-  <button class="mnav-btn" id="mnav-bg" onclick="openSheet('sheet-left','mnav-bg');scrollSheetTo('sec-bg')">
-    <span class="mnav-icon">🖼</span>Nền
+  <button class="mnav-btn" id="mnav-bg" onclick="mobileDrawer('left','sec-bg')">
+    <span class="mnav-icon">🎨</span><span>Nền</span>
   </button>
-  <button class="mnav-btn" id="mnav-print" onclick="openSheet('sheet-right','mnav-print')">
-    <span class="mnav-icon">🖨</span>In
+  <button class="mnav-btn" id="mnav-print" onclick="mobileDrawer('right','sec-print')">
+    <span class="mnav-icon">🖨</span><span>In</span>
   </button>
-  <button class="mnav-btn" id="mnav-export" onclick="openSheet('sheet-right','mnav-export');scrollSheetTo('sec-export')">
-    <span class="mnav-icon">📤</span>Xuất
+  <button class="mnav-btn" id="mnav-export" onclick="mobileDrawer('right','sec-export')">
+    <span class="mnav-icon">📤</span><span>Xuất</span>
   </button>
 </div>
 
-<!-- Bottom sheet overlay -->
-<div class="sheet-overlay" id="sheet-overlay" onclick="closeAllSheets()"></div>
+<!-- Drawer overlay -->
+<div id="drawer-overlay" onclick="closeDrawer()"></div>
 
-<!-- Left panel as bottom sheet (mobile) -->
-<div class="bottom-sheet" id="sheet-left">
-  <div class="sheet-handle"></div>
-  <div class="sheet-title">Cài đặt ảnh</div>
-  <div id="sheet-left-content"></div>
+<!-- Left drawer (mobile) -->
+<div id="drawer-left" class="drawer drawer-left">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawer-left-title">Cài đặt</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-left-body">
+    <!-- left panel content moved here on mobile -->
+  </div>
 </div>
 
-<!-- Right panel as bottom sheet (mobile) -->
-<div class="bottom-sheet" id="sheet-right">
-  <div class="sheet-handle"></div>
-  <div class="sheet-title">In ấn &amp; Xuất file</div>
-  <div id="sheet-right-content"></div>
+<!-- Right drawer (mobile) -->
+<div id="drawer-right" class="drawer drawer-right">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawer-right-title">In ấn &amp; Xuất</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-right-body">
+    <!-- right panel content moved here on mobile -->
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════
@@ -3353,6 +3375,18 @@ function init(){
   if(p4R) p4R.classList.add('active');
   updatePrintPreviewInfo();
 
+  // Update placeholder hint based on device
+  const hint=document.getElementById('placeholder-hint');
+  if(hint) hint.textContent = isMobile()
+    ? 'Nhấn nút 📁 ở thanh dưới để tải ảnh'
+    : 'Upload a photo from the left panel to begin';
+
+  // On mobile, pre-mount panels into drawers so they're ready instantly
+  if(isMobile()){
+    mountPanelIntoDrawer('left');
+    mountPanelIntoDrawer('right');
+  }
+
   // Desktop scroll-to-zoom
   document.getElementById('canvas-area').addEventListener('wheel',e=>{
     e.preventDefault();if(e.deltaY<0)zoomIn();else zoomOut();
@@ -3361,7 +3395,7 @@ function init(){
   // Pinch-to-zoom on touch devices
   initPinchZoom();
 
-  // Responsive resize
+  // Responsive resize — re-render canvas
   const ro=new ResizeObserver(()=>{ updatePreview(); });
   ro.observe(document.getElementById('canvas-area'));
 
@@ -3405,80 +3439,139 @@ function initPinchZoom(){
 }
 
 // ═══════════════════════════════════════════
-// BOTTOM SHEET (mobile navigation)
+// MOBILE DRAWER SYSTEM
+// Real panels moved into drawers on mobile — no cloning, no duplicate IDs
 // ═══════════════════════════════════════════
-let _activeSheet=null;
-let _activeNavBtn=null;
+let _drawerOpen = null; // 'left' | 'right' | null
 
-function openSheet(sheetId, navBtnId){
-  // On desktop, do nothing (panels already visible)
-  if(window.innerWidth>767) return;
+function isMobile(){ return window.innerWidth <= 767; }
 
-  // Clone panel content into sheet
-  if(sheetId==='sheet-left'){
-    const src=document.getElementById('left-panel');
-    const dst=document.getElementById('sheet-left-content');
-    if(src && dst){ dst.innerHTML=src.innerHTML; }
-  } else {
-    const src=document.getElementById('right-panel');
-    const dst=document.getElementById('sheet-right-content');
-    if(src && dst){ dst.innerHTML=src.innerHTML; }
+// Move panel into drawer body (only on mobile, only if not already there)
+function mountPanelIntoDrawer(side){
+  const panelId = side==='left' ? 'left-panel' : 'right-panel';
+  const bodyId  = side==='left' ? 'drawer-left-body' : 'drawer-right-body';
+  const panel   = document.getElementById(panelId);
+  const body    = document.getElementById(bodyId);
+  if(!panel||!body) return;
+  // Move all children (not cloning — same DOM nodes, same IDs, same handlers)
+  if(body.children.length===0){
+    while(panel.firstChild) body.appendChild(panel.firstChild);
+  }
+}
+
+// Restore panel children back (called on resize to desktop)
+function unmountPanelFromDrawer(side){
+  const panelId = side==='left' ? 'left-panel' : 'right-panel';
+  const bodyId  = side==='left' ? 'drawer-left-body' : 'drawer-right-body';
+  const panel   = document.getElementById(panelId);
+  const body    = document.getElementById(bodyId);
+  if(!panel||!body) return;
+  while(body.firstChild) panel.appendChild(body.firstChild);
+}
+
+function mobileDrawer(side, scrollToId){
+  if(!isMobile()) return;
+
+  // If same drawer already open, just scroll
+  if(_drawerOpen===side){
+    if(scrollToId) scrollDrawerTo(side, scrollToId);
+    return;
   }
 
-  closeAllSheets();
-  const sheet=document.getElementById(sheetId);
-  const overlay=document.getElementById('sheet-overlay');
-  if(sheet){ sheet.classList.add('open'); _activeSheet=sheetId; }
-  if(overlay) overlay.classList.add('open');
+  // Close any open drawer first
+  closeDrawer(false);
 
-  // Highlight nav button
+  mountPanelIntoDrawer(side);
+
+  const drawer  = document.getElementById('drawer-'+side);
+  const overlay = document.getElementById('drawer-overlay');
+  drawer.classList.add('open');
+  overlay.classList.add('open');
+  _drawerOpen = side;
+
+  // Update nav active state
   document.querySelectorAll('.mnav-btn').forEach(b=>b.classList.remove('active'));
-  const btn=document.getElementById(navBtnId);
-  if(btn){ btn.classList.add('active'); _activeNavBtn=navBtnId; }
+
+  if(scrollToId){
+    // Small delay to let drawer animate in before scrolling
+    setTimeout(()=>scrollDrawerTo(side, scrollToId), 80);
+  }
+
+  // Touch swipe-to-close
+  initDrawerSwipe(drawer, side);
 }
 
-function closeAllSheets(){
-  document.querySelectorAll('.bottom-sheet').forEach(s=>s.classList.remove('open'));
-  document.getElementById('sheet-overlay')?.classList.remove('open');
-  _activeSheet=null;
+function closeDrawer(restorePanels=true){
+  if(!_drawerOpen) return;
+  const side = _drawerOpen;
+  const drawer = document.getElementById('drawer-'+side);
+  const overlay = document.getElementById('drawer-overlay');
+  if(drawer) drawer.classList.remove('open');
+  if(overlay) overlay.classList.remove('open');
+  document.querySelectorAll('.mnav-btn').forEach(b=>b.classList.remove('active'));
+  _drawerOpen = null;
+  // Don't restore immediately — keep content in drawer for fast re-open
 }
 
-function scrollSheetTo(sectionId){
-  // After short delay (sheet animates in), scroll to section
-  setTimeout(()=>{
-    const activeSheet=document.querySelector('.bottom-sheet.open');
-    if(!activeSheet) return;
-    const target=activeSheet.querySelector('#'+sectionId);
-    if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
-  }, 350);
+function scrollDrawerTo(side, sectionId){
+  const bodyId = side==='left' ? 'drawer-left-body' : 'drawer-right-body';
+  const body   = document.getElementById(bodyId);
+  const target = body ? body.querySelector('#'+sectionId) : null;
+  if(target){
+    // Expand section if collapsed
+    const sectionBody = target.querySelector ? target : document.getElementById(sectionId);
+    if(sectionBody && sectionBody.classList.contains('hidden')) sectionBody.classList.remove('hidden');
+    target.scrollIntoView({behavior:'smooth', block:'start'});
+  }
 }
 
-// Swipe-down to close bottom sheet
-(function initSheetSwipe(){
-  let startY=0, isDragging=false;
-  document.addEventListener('touchstart',e=>{
-    const sheet=document.querySelector('.bottom-sheet.open');
-    if(!sheet) return;
-    startY=e.touches[0].clientY;
-    isDragging=true;
-  },{passive:true});
-  document.addEventListener('touchmove',e=>{
-    if(!isDragging) return;
-    const sheet=document.querySelector('.bottom-sheet.open');
-    if(!sheet) return;
-    const dy=e.touches[0].clientY-startY;
-    if(dy>0) sheet.style.transform=`translateY(${dy}px)`;
-  },{passive:true});
-  document.addEventListener('touchend',e=>{
-    if(!isDragging) return;
-    isDragging=false;
-    const sheet=document.querySelector('.bottom-sheet.open');
-    if(!sheet) return;
-    const dy=e.changedTouches[0].clientY-startY;
-    sheet.style.transform='';
-    if(dy>80) closeAllSheets();
-  },{passive:true});
-})();
+// Swipe edge of drawer to close
+function initDrawerSwipe(drawer, side){
+  let startX=0, startY=0, tracking=false;
+  const isLeft = side==='left';
+
+  function onStart(cx,cy){
+    startX=cx; startY=cy; tracking=true;
+    drawer.style.transition='none';
+  }
+  function onMove(cx,cy){
+    if(!tracking) return;
+    const dx=cx-startX, dy=Math.abs(cy-startY);
+    if(dy>30){ tracking=false; drawer.style.transition=''; return; } // vertical scroll
+    if(isLeft && dx<0) drawer.style.transform=`translateX(${dx}px)`;
+    if(!isLeft && dx>0) drawer.style.transform=`translateX(${dx}px)`;
+  }
+  function onEnd(cx){
+    if(!tracking){ drawer.style.transform=''; return; }
+    tracking=false;
+    drawer.style.transition='';
+    const dx=cx-startX;
+    const threshold=80;
+    if((isLeft && dx < -threshold)||(!isLeft && dx > threshold)){
+      closeDrawer();
+    } else {
+      drawer.style.transform='';
+    }
+  }
+
+  // Remove old listeners by replacing element clone only for events
+  drawer.ontouchstart=e=>{ onStart(e.touches[0].clientX, e.touches[0].clientY); };
+  drawer.ontouchmove=e=>{ onMove(e.touches[0].clientX, e.touches[0].clientY); };
+  drawer.ontouchend=e=>{ onEnd(e.changedTouches[0].clientX); };
+}
+
+// Handle resize: restore panels when going back to desktop
+window.addEventListener('resize', ()=>{
+  if(!isMobile()){
+    // Restore content to original panels
+    ['left','right'].forEach(side=>{
+      const bodyId = side==='left' ? 'drawer-left-body' : 'drawer-right-body';
+      const body   = document.getElementById(bodyId);
+      if(body && body.children.length>0) unmountPanelFromDrawer(side);
+    });
+    closeDrawer(false);
+  }
+});
 </script>
 </body>
 </html>
